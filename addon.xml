@@ -1,0 +1,20 @@
+<addon id="plugin.video.kodiseerr"
+       name="KodiSeerr"
+       version="2.1.0"
+       provider-name="KodiSeerr Dev">
+    <requires>
+        <import addon="xbmc.python" version="3.0.1"/>
+    </requires>
+    <extension point="xbmc.python.pluginsource" library="default.py">
+        <provides>video</provides>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary lang="en_GB">Smart JellySeerr frontend for Kodi</summary>
+        <description lang="en_GB">Request Movies and TV Shows easily from JellySeerr.</description>
+        <platform>all</platform>
+        <assets>
+            <icon>icon.png</icon>
+            <fanart>fanart.jpg</fanart>
+        </assets>
+    </extension>
+</addon>

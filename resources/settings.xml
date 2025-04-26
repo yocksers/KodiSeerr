@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <category label="KodiSeerr Settings">
+        <setting id="jellyseerr_url" type="text" label="JellySeerr Server URL (include http:// and port)" default="" />
+        <setting id="jellyseerr_username" type="text" label="JellySeerr Username or Email" default="" />
+        <setting id="jellyseerr_password" type="text" label="JellySeerr Password" option="hidden" default="" />
+    </category>
+</settings>
