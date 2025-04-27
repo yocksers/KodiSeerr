@@ -1,6 +1,6 @@
 <addon id="plugin.video.kodiseerr"
        name="KodiSeerr"
-       version="2.1.0"
+       version="2.2.0"
        provider-name="KodiSeerr Dev">
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
