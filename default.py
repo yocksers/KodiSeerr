@@ -16,6 +16,7 @@ args = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
 jellyseerr_url = addon.getSetting('jellyseerr_url').rstrip('/')
 username = addon.getSetting('jellyseerr_username')
 password = addon.getSetting('jellyseerr_password')
+enable_ask_4k = addon.getSettingBool('enable_ask_4k')
 
 image_base = "https://image.tmdb.org/t/p/w500"
 
@@ -57,14 +58,14 @@ def get_api(endpoint, params=None):
         return {}
 
 def list_main_menu():
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'search'}), xbmcgui.ListItem('🔍 Search'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending_movies'}), xbmcgui.ListItem('🔥 Trending Movies'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending_tv'}), xbmcgui.ListItem('🔥 Trending TV Shows'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_movies'}), xbmcgui.ListItem('🌟 Popular Movies'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_tv'}), xbmcgui.ListItem('🌟 Popular TV Shows'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_movies'}), xbmcgui.ListItem('🎥 Upcoming Movies'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_tv'}), xbmcgui.ListItem('📺 Upcoming TV Shows'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'requests'}), xbmcgui.ListItem('📋 Request Progress'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'search'}), xbmcgui.ListItem('Search'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending_movies'}), xbmcgui.ListItem('Trending Movies'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending_tv'}), xbmcgui.ListItem('Trending TV Shows'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_movies'}), xbmcgui.ListItem('Popular Movies'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_tv'}), xbmcgui.ListItem('Popular TV Shows'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_movies'}), xbmcgui.ListItem('Upcoming Movies'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_tv'}), xbmcgui.ListItem('Upcoming TV Shows'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'requests'}), xbmcgui.ListItem('Request Progress'), True)
     xbmcplugin.endOfDirectory(addon_handle)
 
 def list_items(items, media_type):
@@ -120,10 +121,17 @@ def show_details(media_type, id):
         request_item(media_type, id)
 
 def request_item(media_type, id):
+    is4k = False
+    if enable_ask_4k:
+        if xbmcgui.Dialog().yesno('KodiSeerr', 'Request in 4K quality?'):
+            is4k = True
+    
+    
+    
     payload = {
         "mediaType": media_type,
         "mediaId": int(id),
-        "is4k": False
+        "is4k": is4k
     }
     if media_type == "tv":
         payload["seasons"] = "all"
@@ -139,11 +147,38 @@ def request_item(media_type, id):
     except Exception as e:
         xbmcgui.Dialog().notification('KodiSeerr', f'Request Failed: {str(e)}', xbmcgui.NOTIFICATION_ERROR, 4000)
 
+
 def search():
     keyboard = xbmcgui.Dialog().input('Search for Movie or TV Show')
     if keyboard:
         data = get_api('/search', params={'query': keyboard})
-        list_items(data.get('results', []), media_type='movie')
+        results = data.get('results', [])
+        for item in results:
+            media_type = item.get('mediaType', 'movie')
+            title = item.get('title') or item.get('name')
+            release_date = item.get('releaseDate') or item.get('firstAirDate')
+            if release_date:
+                year = release_date.split("-")[0]
+                title = f"{title} ({year})"
+            plot = item.get('overview') or ""
+            poster = item.get('posterPath')
+            id = item.get('id')
+
+            url = build_url({'mode': 'details', 'type': media_type, 'id': id})
+
+            list_item = xbmcgui.ListItem(label=title)
+            info = list_item.getVideoInfoTag()
+            info.setTitle(title)
+            info.setPlot(plot)
+
+            if poster:
+                art_url = image_base + poster
+                list_item.setArt({'thumb': art_url, 'poster': art_url, 'fanart': art_url})
+
+            xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
+
+        xbmcplugin.endOfDirectory(addon_handle)
+
 
 # Routing
 mode = args.get('mode')
