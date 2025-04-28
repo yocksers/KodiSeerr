@@ -4,5 +4,6 @@
         <setting id="jellyseerr_url" type="text" label="JellySeerr Server URL (include http:// and port)" default="" />
         <setting id="jellyseerr_username" type="text" label="JellySeerr Username or Email" default="" />
         <setting id="jellyseerr_password" type="text" label="JellySeerr Password" option="hidden" default="" />
+        <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="false" />
     </category>
 </settings>
