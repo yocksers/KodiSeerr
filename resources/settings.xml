@@ -1,9 +1,8 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <category label="KodiSeerr Settings">
-        <setting id="jellyseerr_url" type="text" label="JellySeerr Server URL (include http:// and port)" default="" />
-        <setting id="jellyseerr_username" type="text" label="JellySeerr Username or Email" default="" />
-        <setting id="jellyseerr_password" type="text" label="JellySeerr Password" option="hidden" default="" />
-        <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="false" />
-    </category>
+    <setting id="jellyseerr_url" type="text" label="Jellyseerr URL" default="http://localhost:5055" />
+    <setting id="jellyseerr_username" type="text" label="Username" default="" />
+    <setting id="jellyseerr_password" type="text" label="Password" default="" />
+    <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="true" />
+    <setting id="enable_request_notifications" type="bool" label="Enable Request Notifications" default="true" />
+    <setting id="polling_interval" type="number" label="Polling Interval (Seconds)" default="300" />
 </settings>
