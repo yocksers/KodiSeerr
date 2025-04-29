@@ -26,6 +26,55 @@ opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_j
 def build_url(query):
     return base_url + '?' + urllib.parse.urlencode(query)
 
+
+
+def list_requests():
+    data = get_api('/request')
+    if not data:
+        xbmcgui.Dialog().notification('KodiSeerr', 'Failed to fetch requests.', xbmcgui.NOTIFICATION_ERROR, 5000)
+        return
+
+    results = data.get('results', [])
+    if not results:
+        xbmcgui.Dialog().notification('KodiSeerr', 'No requests found.', xbmcgui.NOTIFICATION_INFO, 3000)
+        xbmcplugin.endOfDirectory(addon_handle)
+        return
+
+    for item in results:
+        media = item.get('media') or {}
+        media_status = media.get('status', 1)
+        title = media.get('title') or media.get('name') or "Unknown"
+        poster_path = media.get('posterPath')
+
+        # Map status
+        status_text = {
+            1: "Unknown",
+            2: "Pending",
+            3: "Processing",
+            4: "Partially Available",
+            5: "Available"
+        }.get(media_status, "Unknown")
+
+        # If processing, try to add estimated time
+        if media_status == 3:
+            media_info = media.get('mediaInfo') or {}
+            estimated_seconds = media_info.get('downloadEstimatedTime')
+            if estimated_seconds:
+                estimated_minutes = int(int(estimated_seconds) / 60)
+                status_text += f" (Estimated {estimated_minutes} min)"
+
+        label = f"{title} - {status_text}"
+
+        list_item = xbmcgui.ListItem(label=label)
+        if poster_path:
+            art_url = image_base + poster_path
+            list_item.setArt({'thumb': art_url, 'poster': art_url, 'fanart': art_url})
+
+        xbmcplugin.addDirectoryItem(addon_handle, base_url, list_item, False)
+
+    xbmcplugin.endOfDirectory(addon_handle)
+
+
 def login():
     if not jellyseerr_url or not username or not password:
         xbmcgui.Dialog().notification('KodiSeerr', 'Please set URL, Username, and Password in Settings.', xbmcgui.NOTIFICATION_ERROR, 5000)
@@ -148,6 +197,7 @@ def request_item(media_type, id):
         xbmcgui.Dialog().notification('KodiSeerr', f'Request Failed: {str(e)}', xbmcgui.NOTIFICATION_ERROR, 4000)
 
 
+
 def search():
     keyboard = xbmcgui.Dialog().input('Search for Movie or TV Show')
     if keyboard:
@@ -157,9 +207,12 @@ def search():
             media_type = item.get('mediaType', 'movie')
             title = item.get('title') or item.get('name')
             release_date = item.get('releaseDate') or item.get('firstAirDate')
+            type_label = "(Movie)" if media_type == "movie" else "(TV Show)"
             if release_date:
                 year = release_date.split("-")[0]
-                title = f"{title} ({year})"
+                title = f"{title} ({year}) {type_label}"
+            else:
+                title = f"{title} {type_label}"
             plot = item.get('overview') or ""
             poster = item.get('posterPath')
             id = item.get('id')
@@ -177,7 +230,8 @@ def search():
 
             xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
 
-        xbmcplugin.endOfDirectory(addon_handle)
+    xbmcplugin.endOfDirectory(addon_handle)
+
 
 
 # Routing
