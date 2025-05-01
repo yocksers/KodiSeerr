@@ -2,7 +2,7 @@
     <setting id="api_service" type="enum" label="Service" values="Jellyseerr|Overseerr" default="0" />
     <setting id="jellyseerr_url" type="text" label="Server URL" default="http://localhost:5055" />
     <setting id="jellyseerr_username" type="text" label="Username" default="" />
-    <setting id="jellyseerr_password" type="hidden" label="Password" default="" />
+    <setting id="jellyseerr_password" type="text" option="hidden" label="Password" default="" />
     <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="true" />
     <setting id="enable_request_notifications" type="bool" label="Enable Request Notifications" default="true" />
     <setting id="polling_interval" type="number" label="Polling Interval (Seconds)" default="300" />
