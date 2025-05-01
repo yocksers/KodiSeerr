@@ -1,7 +1,7 @@
 # KodiSeerr
-*A smart JellySeerr frontend for Kodi*
+*A JellySeerr and OverSeerr frontend for Kodi*
 
-KodiSeerr is a lightweight and user-friendly Kodi add-on that lets you browse, search, and request movies and TV shows from any JellySeerr server you have access to directly inside Kodi.
+KodiSeerr is a lightweight and user-friendly Kodi add-on that lets you browse, search, and request movies and TV shows from any JellySeerr or OverSeerr server you have access to directly inside Kodi.
 
 ---
 
@@ -18,8 +18,7 @@ KodiSeerr is a lightweight and user-friendly Kodi add-on that lets you browse, s
 ## Requirements
 
 - Kodi 19+ (tested on Android, LG/Samsung TVs, Windows)
-- A running **JellySeerr** server (v2.5.2 or newer recommended)
-- Your JellySeerr login credentials (username + password)
+- A running JellySeerr or OverSeerr server.
 
 ---
 
@@ -32,27 +31,10 @@ KodiSeerr is a lightweight and user-friendly Kodi add-on that lets you browse, s
    - Select the `plugin.video.kodiseerr.zip` file
 3. Once installed, open the KodiSeerr add-on
 4. Go to **Settings** inside the addon and enter:
-   - Your JellySeerr URL (e.g. `http://192.168.0.100:5055`)
-   - Your JellySeerr **username or email**
-   - Your JellySeerr **password**
+   - Your JellySeerr or OverSeerr URL (e.g. `http://192.168.0.100:5055`)
+   - Your **username or email**
+   - Your **password**
 5. Done! 🎉
-
----
-
-## Navigation
-
-- **Trending Movies / TV Shows** – shows what's hot right now
-- **Popular Movies / TV Shows** – based on JellySeerr's popularity index
-- **Search** – type any title and request instantly
-- **Request Progress** – see the status of your requests (filterable by Pending, Approved, Available)
-
----
-
-## Notes
-
-- This addon does not filter or restrict content – it acts purely as a JellySeerr frontend.
-- KodiSeerr uses **username + password** to authenticate with JellySeerr (secure session cookies).
-- Works across most Kodi platforms (desktop, Android, TV-based, etc.)
 
 ---
 
