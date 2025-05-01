@@ -4,6 +4,7 @@ import xbmcgui
 import xbmcvfs
 import urllib.request
 import json
+import api_client
 import http.cookiejar
 import os
 
@@ -18,7 +19,9 @@ def get_interval():
     try:
         interval = int(addon.getSetting('polling_interval'))
         return max(60, interval)
-    except:
+    except Exception:
+        import traceback
+        traceback.print_exc()
         return 300
 
 def main_loop():
@@ -28,27 +31,33 @@ def main_loop():
     try:
         with open(notified_file, 'r') as f:
             notified_ids = set(json.load(f))
-    except:
+    except Exception:
+        import traceback
+        traceback.print_exc()
         notified_ids = set()
 
     while not monitor.abortRequested():
         if addon.getSettingBool('enable_request_notifications'):
             cookie_jar = http.cookiejar.CookieJar()
-            opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+# urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
             login_data = json.dumps({"email": user, "password": pw}).encode('utf-8')
             req = urllib.request.Request(url + '/api/v1/auth/local', data=login_data, method='POST')
             req.add_header('Content-Type', 'application/json')
             try:
-                resp = opener.open(req, timeout=10)
-            except:
+                resp = api_client.client.opener.open(req, timeout=10)
+            except Exception:
+                import traceback
+                traceback.print_exc()
                 xbmc.log("[KodiSeerr Service] Login failed", xbmc.LOGERROR)
             else:
                 try:
                     req2 = urllib.request.Request(url + '/api/v1/request')
                     req2.add_header('Accept', 'application/json')
-                    response = opener.open(req2, timeout=10)
+                    response = api_client.client.opener.open(req2, timeout=10)
                     requests_data = json.loads(response.read().decode('utf-8'))
-                except:
+                except Exception:
+                    import traceback
+                    traceback.print_exc()
                     xbmc.log("[KodiSeerr Service] Fetch requests failed", xbmc.LOGERROR)
                 else:
                     items = requests_data.get('results', []) if isinstance(requests_data, dict) else []

@@ -6,6 +6,7 @@ import xbmcaddon
 import urllib.parse
 import urllib.request
 import json
+import api_client
 import http.cookiejar
 
 addon = xbmcaddon.Addon()
@@ -29,7 +30,7 @@ def build_url(query):
 
 
 def list_requests():
-    data = get_api('/request')
+    data = api_client.client.get('/request')
     if not data:
         xbmcgui.Dialog().notification('KodiSeerr', 'Failed to fetch requests.', xbmcgui.NOTIFICATION_ERROR, 5000)
         return
@@ -114,7 +115,6 @@ def list_main_menu():
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_tv'}), xbmcgui.ListItem('Popular TV Shows'), True)
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_movies'}), xbmcgui.ListItem('Upcoming Movies'), True)
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_tv'}), xbmcgui.ListItem('Upcoming TV Shows'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'requests'}), xbmcgui.ListItem('Request Progress'), True)
     xbmcplugin.endOfDirectory(addon_handle)
 
 def list_items(items, media_type):
