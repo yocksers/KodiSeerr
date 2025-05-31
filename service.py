@@ -2,18 +2,12 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 import xbmcvfs
-import urllib.request
 import json
 import api_client
-import http.cookiejar
 import os
 
 addon = xbmcaddon.Addon()
 monitor = xbmc.Monitor()
-
-url = addon.getSetting('jellyseerr_url').rstrip('/')
-user = addon.getSetting('jellyseerr_username')
-pw = addon.getSetting('jellyseerr_password')
 
 def get_interval():
     try:
@@ -38,41 +32,26 @@ def main_loop():
 
     while not monitor.abortRequested():
         if addon.getSettingBool('enable_request_notifications'):
-            cookie_jar = http.cookiejar.CookieJar()
-# urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-            login_data = json.dumps({"email": user, "password": pw}).encode('utf-8')
-            req = urllib.request.Request(url + '/api/v1/auth/local', data=login_data, method='POST')
-            req.add_header('Content-Type', 'application/json')
             try:
-                resp = api_client.client.opener.open(req, timeout=10)
+                requests_data = api_client.client.api_request('/request')
             except Exception:
                 import traceback
                 traceback.print_exc()
-                xbmc.log("[KodiSeerr Service] Login failed", xbmc.LOGERROR)
+                xbmc.log("[KodiSeerr Service] Fetch requests failed", xbmc.LOGERROR)
             else:
-                try:
-                    req2 = urllib.request.Request(url + '/api/v1/request')
-                    req2.add_header('Accept', 'application/json')
-                    response = api_client.client.opener.open(req2, timeout=10)
-                    requests_data = json.loads(response.read().decode('utf-8'))
-                except Exception:
-                    import traceback
-                    traceback.print_exc()
-                    xbmc.log("[KodiSeerr Service] Fetch requests failed", xbmc.LOGERROR)
-                else:
-                    items = requests_data.get('results', []) if isinstance(requests_data, dict) else []
-                    for item in items:
-                        media = item.get('media') or {}
-                        media_status = media.get('status', 1)
-                        title = media.get('title') or media.get('name') or "Media"
-                        media_id = str(media.get('tmdbId') or media.get('id') or "")
+                items = requests_data.get('results', []) if isinstance(requests_data, dict) else []
+                for item in items:
+                    media = item.get('media') or {}
+                    media_status = media.get('status', 1)
+                    title = media.get('title') or media.get('name') or "Media"
+                    media_id = str(media.get('tmdbId') or media.get('id') or "")
 
-                        if media_status == 5 and media_id and media_id not in notified_ids:
-                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now available!', xbmcgui.NOTIFICATION_INFO)
-                            notified_ids.add(media_id)
+                    if media_status == 5 and media_id and media_id not in notified_ids:
+                        xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now available!', xbmcgui.NOTIFICATION_INFO)
+                        notified_ids.add(media_id)
 
-                    with open(notified_file, 'w') as f:
-                        json.dump(list(notified_ids), f)
+                with open(notified_file, 'w') as f:
+                    json.dump(list(notified_ids), f)
 
         if monitor.waitForAbort(get_interval()):
             break

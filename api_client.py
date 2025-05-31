@@ -1,7 +1,6 @@
-
 import xbmcaddon
 from jellyseerr_api import JellyseerrClient
-from overseerr_api import OverseerrClient
+from overseerr_api import OverseerrClient  # (Assumes you want to add Overseerr support later)
 
 addon = xbmcaddon.Addon()
 service = addon.getSetting("api_service")
@@ -13,5 +12,3 @@ if service == "1":
     client = OverseerrClient(url, username, password)
 else:
     client = JellyseerrClient(url, username, password)
-
-client.login()
