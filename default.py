@@ -133,18 +133,29 @@ def set_info_tag(list_item, info):
     if info.get('mediatype'): info_tag.setMediaType(info['mediatype'])
 
 def list_main_menu():
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'search'}), xbmcgui.ListItem('Search'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending_movies'}), xbmcgui.ListItem('Trending Movies'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending_tv'}), xbmcgui.ListItem('Trending TV Shows'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending'}), xbmcgui.ListItem('Trending'), True)
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_movies'}), xbmcgui.ListItem('Popular Movies'), True)
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_tv'}), xbmcgui.ListItem('Popular TV Shows'), True)
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_movies'}), xbmcgui.ListItem('Upcoming Movies'), True)
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_tv'}), xbmcgui.ListItem('Upcoming TV Shows'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'tvshows'}), xbmcgui.ListItem('Browse TV Shows'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'genres', 'media_type': 'movie'}), xbmcgui.ListItem('Movies by Genre'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'genres', 'media_type': 'tv'}), xbmcgui.ListItem('TV Shows by Genre'), True)
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'requests'}), xbmcgui.ListItem('Request Progress'), True)
+    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'search'}), xbmcgui.ListItem('Search'), True)
     xbmcplugin.endOfDirectory(addon_handle)
 
-def list_items(data, media_type, mode):
+def list_genres(media_type):
+    data = api_client.client.api_request(f"/genres/{media_type}", params={})
+    for item in data:
+        name = item.get('name')
+        id = item.get('id')
+        display_type = "movies" if media_type == "movie" else media_type
+        url = build_url({'mode': 'genre', 'display_type': display_type, 'genre_id': id})
+        list_item = xbmcgui.ListItem(label=name)
+        xbmcplugin.addDirectoryItem(addon_handle, url, list_item, True)
+    xbmcplugin.endOfDirectory(addon_handle)
+
+def list_items(data, mode, display_type=None, genre_id=None):
     items = data.get('results', [])
     current_page = data.get('page', 1)
     total_pages = data.get('totalPages', 1)
@@ -155,12 +166,20 @@ def list_items(data, media_type, mode):
 
     # Previous Page
     if current_page > 1:
-        prev_page_url = build_url({'mode': mode, 'page': current_page - 1})
+        params = {
+            'mode': mode,
+            'page': current_page - 1
+        }
+        if mode == "genre":
+            params['genre_id'] = genre_id
+            params['display_type'] = display_type
+        prev_page_url = build_url(params)
         prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
         xbmcplugin.addDirectoryItem(addon_handle, prev_page_url, prev_item, True)
 
     # Media Items
     for item in items:
+        media_type = item.get('mediaType')
         title = item.get('title') or item.get('name')
         release_date = item.get('releaseDate') or item.get('firstAirDate')
         year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
@@ -176,46 +195,14 @@ def list_items(data, media_type, mode):
 
     # Next Page
     if current_page < total_pages:
-        next_page_url = build_url({'mode': mode, 'page': current_page + 1})
-        next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
-        xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
-
-    xbmcplugin.endOfDirectory(addon_handle)
-
-
-def list_tvshows(page=1):
-    params = {"sortBy": "popularity.desc", "page": page}
-    data = api_client.client.api_request("/discover/tv", params=params)
-    results = data.get('results', []) if data else []
-    current_page = data.get('page', 1)
-    total_pages = data.get('total_pages', 1)
-
-    # Show page info (non-clickable)
-    page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
-    xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
-
-    # Previous Page
-    if current_page > 1:
-        previous_page_url = build_url({'mode': 'list_tvshows', 'page': current_page - 1})
-        previous_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
-        xbmcplugin.addDirectoryItem(addon_handle, previous_page_url, previous_item, True)
-
-    # TV show items
-    for item in results:
-        title = item.get('title') or item.get('name')
-        year = int(item.get('firstAirDate', '1900')[:4]) if item.get('firstAirDate') and item.get('firstAirDate').split("-")[0].isdigit() else None
-        label = f"{title} ({year})" if year else title
-        url = build_url({'mode': 'request', 'type': 'tv', 'id': item.get('id')})
-        list_item = xbmcgui.ListItem(label=label)
-        info = make_info(item, 'tv')
-        art = make_art(item)
-        set_info_tag(list_item, info)
-        list_item.setArt(art)
-        xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
-
-    # Next Page
-    if current_page < total_pages:
-        next_page_url = build_url({'mode': 'list_tvshows', 'page': current_page + 1})
+        params = {
+            'mode': mode,
+            'page': current_page + 1
+        }
+        if mode == "genre":
+            params['genre_id'] = genre_id
+            params['display_type'] = display_type
+        next_page_url = build_url(params)
         next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
         xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
 
@@ -348,24 +335,21 @@ if not page:
     page = 1
 if not mode:
     list_main_menu()
-elif mode == "trending_movies": # functionality is somewhat broken
+elif mode == "trending":
     data = api_client.client.api_request("/discover/trending", params={"page": page})
-    list_items(data, "movie", mode)
-elif mode == "trending_tv": # functionality is somewhat broken
-    data = api_client.client.api_request("/discover/trending", params={"page": page})
-    list_items(data, "tv", mode)
+    list_items(data, mode)
 elif mode == "popular_movies":
     data = api_client.client.api_request("/discover/movies", params={"sortBy": "popularity.desc", "page": page})
-    list_items(data, "movie", mode)
+    list_items(data, mode)
 elif mode == "popular_tv":
     data = api_client.client.api_request("/discover/tv", params={"sortBy": "popularity.desc", "page": page})
-    list_items(data, "tv", mode)
+    list_items(data, mode)
 elif mode == "upcoming_movies":
     data = api_client.client.api_request("/discover/movies/upcoming", params={"page": page})
-    list_items(data, "movie", mode)
+    list_items(data, mode)
 elif mode == "upcoming_tv":
     data = api_client.client.api_request("/discover/tv/upcoming", params={"page": page})
-    list_items(data, "tv", mode)
+    list_items(data, mode)
 elif mode == "search": # functionality is completely broken
     search()
 elif mode == "request":
@@ -376,10 +360,14 @@ elif mode == "requests":
         show_requests(data, mode)
     else:
         xbmcgui.Dialog().notification("Kodiseerr", "Failed to fetch requests", xbmcgui.NOTIFICATION_ERROR)
-
-elif mode == "tvshows":
-    list_tvshows()
 elif mode == "tvshow" and args.get("id"):
     list_seasons(args.get("id"))
 elif mode == "season" and args.get("tv_id") and args.get("season"):
     list_episodes(args.get("tv_id"), int(args.get("season")))
+elif mode == "genres" and args.get("media_type"):
+    list_genres(args.get("media_type"))
+elif mode == "genre" and args.get("display_type") and args.get("genre_id"):
+    display_type = args.get("display_type")
+    genre_id = args.get("genre_id")
+    data = api_client.client.api_request(f"/discover/{display_type}/genre/{genre_id}", params={"page": page})
+    list_items(data, mode, display_type, genre_id)
