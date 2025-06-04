@@ -63,7 +63,8 @@ class JellyseerrClient:
 
         url = f"{self.base_url}/api/v1{endpoint}"
         if params:
-            url += '?' + urlencode(params)
+            safe_params = {k: str(v) for k, v in params.items()}
+            url += '?' + urlencode(safe_params)
 
         if data is not None:
             data = json.dumps(data).encode('utf-8')

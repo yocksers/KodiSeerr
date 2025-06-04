@@ -144,36 +144,81 @@ def list_main_menu():
     xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'requests'}), xbmcgui.ListItem('Request Progress'), True)
     xbmcplugin.endOfDirectory(addon_handle)
 
-def list_items(items, media_type):
+def list_items(data, media_type, mode):
+    items = data.get('results', [])
+    current_page = data.get('page', 1)
+    total_pages = data.get('totalPages', 1)
+
+    # Show page info
+    page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+    xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
+
+    # Previous Page
+    if current_page > 1:
+        prev_page_url = build_url({'mode': mode, 'page': current_page - 1})
+        prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
+        xbmcplugin.addDirectoryItem(addon_handle, prev_page_url, prev_item, True)
+
+    # Media Items
     for item in items:
         title = item.get('title') or item.get('name')
         release_date = item.get('releaseDate') or item.get('firstAirDate')
         year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
         label = f"{title} ({year})" if year else title
         id = item.get('id')
-        url = build_url({'mode': 'request', 'type': media_type, 'id': id})  # Go straight to request
+        url = build_url({'mode': 'request', 'type': media_type, 'id': id})
         list_item = xbmcgui.ListItem(label=label)
         info = make_info(item, media_type)
         art = make_art(item)
         set_info_tag(list_item, info)
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
+
+    # Next Page
+    if current_page < total_pages:
+        next_page_url = build_url({'mode': mode, 'page': current_page + 1})
+        next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
+        xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
+
     xbmcplugin.endOfDirectory(addon_handle)
 
-def list_tvshows():
-    data = api_client.client.api_request("/discover/tv?sortBy=popularity.desc")
+
+def list_tvshows(page=1):
+    params = {"sortBy": "popularity.desc", "page": page}
+    data = api_client.client.api_request("/discover/tv", params=params)
     results = data.get('results', []) if data else []
+    current_page = data.get('page', 1)
+    total_pages = data.get('total_pages', 1)
+
+    # Show page info (non-clickable)
+    page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+    xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
+
+    # Previous Page
+    if current_page > 1:
+        previous_page_url = build_url({'mode': 'list_tvshows', 'page': current_page - 1})
+        previous_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
+        xbmcplugin.addDirectoryItem(addon_handle, previous_page_url, previous_item, True)
+
+    # TV show items
     for item in results:
         title = item.get('title') or item.get('name')
         year = int(item.get('firstAirDate', '1900')[:4]) if item.get('firstAirDate') and item.get('firstAirDate').split("-")[0].isdigit() else None
         label = f"{title} ({year})" if year else title
-        url = build_url({'mode': 'request', 'type': 'tv', 'id': item.get('id')})  # Go straight to request
+        url = build_url({'mode': 'request', 'type': 'tv', 'id': item.get('id')})
         list_item = xbmcgui.ListItem(label=label)
         info = make_info(item, 'tv')
         art = make_art(item)
         set_info_tag(list_item, info)
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
+
+    # Next Page
+    if current_page < total_pages:
+        next_page_url = build_url({'mode': 'list_tvshows', 'page': current_page + 1})
+        next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
+        xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
+
     xbmcplugin.endOfDirectory(addon_handle)
 
 def do_request(media_type, id):
@@ -194,6 +239,54 @@ def do_request(media_type, id):
     except Exception as e:
         xbmcgui.Dialog().notification('KodiSeerr', f'Request Failed: {str(e)}', xbmcgui.NOTIFICATION_ERROR, 4000)
     xbmc.executebuiltin("Action(Back)")
+
+def show_requests(data, mode):
+    items = data.get('results', [])
+    current_page = data.get('page', 1)
+    total_pages = data.get('totalPages', 1)
+
+    # Show page info
+    page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+    xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
+
+    # Previous Page
+    if current_page > 1:
+        prev_page_url = build_url({'mode': mode, 'page': current_page - 1})
+        prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
+        xbmcplugin.addDirectoryItem(addon_handle, prev_page_url, prev_item, True)
+
+    for item in items:
+        media = item.get('media', {})
+        id = media.get('tmdbId')
+        media_type = media.get('mediaType')
+        mediaData = api_client.client.api_request(f"/{media_type}/{id}", params={})
+        label_text = mediaData.get('title') or mediaData.get('name') or "Untitled"
+
+        status = media.get('status')
+        info = {}
+        if status == 3:
+            label_text += " [COLOR blue](Requested)[/COLOR]"
+        elif status == 4:
+            label_text += " [COLOR lime](Partially Available)[/COLOR]"
+        elif status == 5:
+            label_text += " [COLOR lime](Available)[/COLOR]"
+
+        url = ""  # build_url({'mode': 'request_view', 'type': media_type, 'id': id})
+        list_item = xbmcgui.ListItem(label=label_text)
+        info['title'] = label_text
+        info['plot'] = f"Media ID: {id}, Type: {media_type}"
+        set_info_tag(list_item, info)
+        art = make_art(mediaData)
+        list_item.setArt(art)
+        xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
+
+    # Next Page
+    if current_page < total_pages:
+        next_page_url = build_url({'mode': mode, 'page': current_page + 1})
+        next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
+        xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
+
+    xbmcplugin.endOfDirectory(addon_handle)    
 
 def list_seasons(tv_id):
     data = api_client.client.api_request(f"/tv/{tv_id}")
@@ -250,32 +343,40 @@ def search():
     xbmcplugin.endOfDirectory(addon_handle)
 
 mode = args.get('mode')
+page = args.get('page')
+if not page:
+    page = 1
 if not mode:
     list_main_menu()
-elif mode == "trending_movies":
-    data = api_client.client.api_request("/discover/trending")
-    list_items([i for i in data.get('results', []) if i.get('mediaType') == 'movie'], "movie")
-elif mode == "trending_tv":
-    data = api_client.client.api_request("/discover/trending")
-    list_items([i for i in data.get('results', []) if i.get('mediaType') == 'tv'], "tv")
+elif mode == "trending_movies": # functionality is somewhat broken
+    data = api_client.client.api_request("/discover/trending", params={"page": page})
+    list_items(data, "movie", mode)
+elif mode == "trending_tv": # functionality is somewhat broken
+    data = api_client.client.api_request("/discover/trending", params={"page": page})
+    list_items(data, "tv", mode)
 elif mode == "popular_movies":
-    data = api_client.client.api_request("/discover/movies?sortBy=popularity.desc")
-    list_items(data.get('results', []), "movie")
+    data = api_client.client.api_request("/discover/movies", params={"sortBy": "popularity.desc", "page": page})
+    list_items(data, "movie", mode)
 elif mode == "popular_tv":
-    data = api_client.client.api_request("/discover/tv?sortBy=popularity.desc")
-    list_items(data.get('results', []), "tv")
+    data = api_client.client.api_request("/discover/tv", params={"sortBy": "popularity.desc", "page": page})
+    list_items(data, "tv", mode)
 elif mode == "upcoming_movies":
-    data = api_client.client.api_request("/discover/movies?sortBy=releaseDate.desc")
-    list_items(data.get('results', []), "movie")
+    data = api_client.client.api_request("/discover/movies/upcoming", params={"page": page})
+    list_items(data, "movie", mode)
 elif mode == "upcoming_tv":
-    data = api_client.client.api_request("/discover/tv?sortBy=firstAirDate.desc")
-    list_items(data.get('results', []), "tv")
-elif mode == "search":
+    data = api_client.client.api_request("/discover/tv/upcoming", params={"page": page})
+    list_items(data, "tv", mode)
+elif mode == "search": # functionality is completely broken
     search()
 elif mode == "request":
     do_request(args.get('type'), args.get('id'))
 elif mode == "requests":
-    pass  # You can implement request status view here
+    data = api_client.client.api_request("/request", params={"sort": "added", "filter": "all", "sortDirection": "desc"})
+    if data:
+        show_requests(data, mode)
+    else:
+        xbmcgui.Dialog().notification("Kodiseerr", "Failed to fetch requests", xbmcgui.NOTIFICATION_ERROR)
+
 elif mode == "tvshows":
     list_tvshows()
 elif mode == "tvshow" and args.get("id"):

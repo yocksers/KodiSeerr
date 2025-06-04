@@ -22,6 +22,12 @@ KodiSeerr is a lightweight and user-friendly Kodi add-on that lets you browse, s
 
 ---
 
+## Known Issues
+
+- Trending lists not being filtered by type (movie/tv)
+- Search not working
+- No pagination when clicking "Browse TV Shows"
+
 ## Installation
 
 1. Download the latest ZIP release
