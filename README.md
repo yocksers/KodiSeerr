@@ -1,4 +1,4 @@
-# KodiSeerr
+# KodiSeerr is no longer maintained!!
 *A JellySeerr and OverSeerr frontend for Kodi*
 
 KodiSeerr is a lightweight and user-friendly Kodi add-on that lets you browse, search, and request movies and TV shows from any JellySeerr or OverSeerr server you have access to directly inside Kodi.
