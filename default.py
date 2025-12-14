@@ -69,7 +69,6 @@ def make_info(item, media_type):
     cast_str = ', '.join(cast[:5])
     plot = item.get('overview', '')
     title = item.get('title') or item.get('name')
-    # Rich plot for display
     rich_plot = f"{title} ({year})"
     if genres: rich_plot += f"\nGenres: {genres}"
     if studio: rich_plot += f"\nStudio: {studio}"
@@ -133,35 +132,75 @@ def set_info_tag(list_item, info):
     if info.get('mediatype'): info_tag.setMediaType(info['mediatype'])
 
 def list_main_menu():
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'trending'}), xbmcgui.ListItem('Trending'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_movies'}), xbmcgui.ListItem('Popular Movies'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'popular_tv'}), xbmcgui.ListItem('Popular TV Shows'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_movies'}), xbmcgui.ListItem('Upcoming Movies'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'upcoming_tv'}), xbmcgui.ListItem('Upcoming TV Shows'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'genres', 'media_type': 'movie'}), xbmcgui.ListItem('Movies by Genre'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'genres', 'media_type': 'tv'}), xbmcgui.ListItem('TV Shows by Genre'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'requests'}), xbmcgui.ListItem('Request Progress'), True)
-    xbmcplugin.addDirectoryItem(addon_handle, build_url({'mode': 'search'}), xbmcgui.ListItem('Search'), True)
+    xbmcplugin.setContent(addon_handle, 'files')
+    
+    items = [
+        ('trending', 'Trending', 'DefaultMovies.png'),
+        ('popular_movies', 'Popular Movies', 'DefaultMovies.png'),
+        ('popular_tv', 'Popular TV Shows', 'DefaultTVShows.png'),
+        ('upcoming_movies', 'Upcoming Movies', 'DefaultMovies.png'),
+        ('upcoming_tv', 'Upcoming TV Shows', 'DefaultTVShows.png'),
+        (None, None, None),
+        ('genres_movie', 'Movies by Genre', 'DefaultGenre.png'),
+        ('genres_tv', 'TV Shows by Genre', 'DefaultGenre.png'),
+        (None, None, None),
+        ('requests', 'Request Progress', 'DefaultInProgressShows.png'),
+        ('search', 'Search', 'DefaultAddonsSearch.png'),
+    ]
+    
+    for item in items:
+        if item[0] is None:
+            continue
+        mode, label, icon = item
+        list_item = xbmcgui.ListItem(label)
+        list_item.setArt({'icon': icon, 'thumb': icon})
+        
+        if mode == 'genres_movie':
+            url = build_url({'mode': 'genres', 'media_type': 'movie'})
+        elif mode == 'genres_tv':
+            url = build_url({'mode': 'genres', 'media_type': 'tv'})
+        else:
+            url = build_url({'mode': mode})
+        
+        xbmcplugin.addDirectoryItem(addon_handle, url, list_item, True)
+    
     xbmcplugin.endOfDirectory(addon_handle)
 
 def list_genres(media_type):
+    xbmcplugin.setContent(addon_handle, 'genres')
     data = api_client.client.api_request(f"/genres/{media_type}", params={})
-    for item in data:
-        name = item.get('name')
-        id = item.get('id')
-        display_type = "movies" if media_type == "movie" else media_type
-        url = build_url({'mode': 'genre', 'display_type': display_type, 'genre_id': id})
-        list_item = xbmcgui.ListItem(label=name)
-        xbmcplugin.addDirectoryItem(addon_handle, url, list_item, True)
+    if data:
+        for item in data:
+            name = item.get('name')
+            id = item.get('id')
+            display_type = "movies" if media_type == "movie" else media_type
+            url = build_url({'mode': 'genre', 'display_type': display_type, 'genre_id': id})
+            list_item = xbmcgui.ListItem(label=name)
+            list_item.setArt({'icon': 'DefaultGenre.png'})
+            xbmcplugin.addDirectoryItem(addon_handle, url, list_item, True)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch genres", xbmcgui.NOTIFICATION_ERROR)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.endOfDirectory(addon_handle)
 
 def list_items(data, mode, display_type=None, genre_id=None):
     items = data.get('results', [])
     current_page = data.get('page', 1)
     total_pages = data.get('totalPages', 1)
+    
+    if items:
+        first_media_type = items[0].get('mediaType', 'video')
+        if first_media_type == 'movie':
+            xbmcplugin.setContent(addon_handle, 'movies')
+        elif first_media_type == 'tv':
+            xbmcplugin.setContent(addon_handle, 'tvshows')
+        else:
+            xbmcplugin.setContent(addon_handle, 'videos')
+    else:
+        xbmcplugin.setContent(addon_handle, 'videos')
 
-    # Show page info
     page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+    page_info.setArt({'icon': 'DefaultAddonNone.png'})
     xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
 
     # Previous Page
@@ -175,9 +214,9 @@ def list_items(data, mode, display_type=None, genre_id=None):
             params['display_type'] = display_type
         prev_page_url = build_url(params)
         prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
+        prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
         xbmcplugin.addDirectoryItem(addon_handle, prev_page_url, prev_item, True)
 
-    # Media Items
     for item in items:
         media_type = item.get('mediaType')
         title = item.get('title') or item.get('name')
@@ -204,8 +243,13 @@ def list_items(data, mode, display_type=None, genre_id=None):
             params['display_type'] = display_type
         next_page_url = build_url(params)
         next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
+        next_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
         xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
-
+    
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_LABEL)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_VIDEO_YEAR)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_VIDEO_RATING)
     xbmcplugin.endOfDirectory(addon_handle)
 
 def do_request(media_type, id):
@@ -228,18 +272,19 @@ def do_request(media_type, id):
     xbmc.executebuiltin("Action(Back)")
 
 def show_requests(data, mode):
+    xbmcplugin.setContent(addon_handle, 'videos')
     items = data.get('results', [])
     current_page = data.get('page', 1)
     total_pages = data.get('totalPages', 1)
 
-    # Show page info
     page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+    page_info.setArt({'icon': 'DefaultAddonNone.png'})
     xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
 
-    # Previous Page
     if current_page > 1:
         prev_page_url = build_url({'mode': mode, 'page': current_page - 1})
         prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
+        prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
         xbmcplugin.addDirectoryItem(addon_handle, prev_page_url, prev_item, True)
 
     for item in items:
@@ -247,6 +292,8 @@ def show_requests(data, mode):
         id = media.get('tmdbId')
         media_type = media.get('mediaType')
         mediaData = api_client.client.api_request(f"/{media_type}/{id}", params={})
+        if not mediaData:
+            continue
         label_text = mediaData.get('title') or mediaData.get('name') or "Untitled"
 
         status = media.get('status')
@@ -258,7 +305,7 @@ def show_requests(data, mode):
         elif status == 5:
             label_text += " [COLOR lime](Available)[/COLOR]"
 
-        url = ""  # build_url({'mode': 'request_view', 'type': media_type, 'id': id})
+        url = build_url({'mode': 'request', 'type': media_type, 'id': id})
         list_item = xbmcgui.ListItem(label=label_text)
         info['title'] = label_text
         info['plot'] = f"Media ID: {id}, Type: {media_type}"
@@ -267,16 +314,23 @@ def show_requests(data, mode):
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
 
-    # Next Page
     if current_page < total_pages:
         next_page_url = build_url({'mode': mode, 'page': current_page + 1})
         next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
+        next_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
         xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
-
+    
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.endOfDirectory(addon_handle)    
 
 def list_seasons(tv_id):
+    xbmcplugin.setContent(addon_handle, 'seasons')
     data = api_client.client.api_request(f"/tv/{tv_id}")
+    if not data:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch seasons", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)
+        return
     seasons = data.get('seasons', [])
     show_title = data.get('title') or data.get('name')
     for season in seasons:
@@ -290,10 +344,17 @@ def list_seasons(tv_id):
         set_info_tag(list_item, info)
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(addon_handle, url, list_item, True)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.endOfDirectory(addon_handle)
 
 def list_episodes(tv_id, season_number):
+    xbmcplugin.setContent(addon_handle, 'episodes')
     data = api_client.client.api_request(f"/tv/{tv_id}/season/{season_number}")
+    if not data:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch episodes", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)
+        return
     episodes = data.get('episodes', [])
     show_title = data.get('show', {}).get('name') or data.get('show', {}).get('title', '')
     for ep in episodes:
@@ -306,9 +367,13 @@ def list_episodes(tv_id, season_number):
         set_info_tag(list_item, info)
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(addon_handle, '', list_item, False)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_LABEL)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_EPISODE)
     xbmcplugin.endOfDirectory(addon_handle)
 
 def search():
+    xbmcplugin.setContent(addon_handle, 'videos')
     keyboard = xbmcgui.Dialog().input('Search for Movie or TV Show')
     if keyboard:
         data = api_client.client.api_request('/search', params={'query': keyboard})
@@ -327,29 +392,57 @@ def search():
             set_info_tag(list_item, info)
             list_item.setArt(art)
             xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_LABEL)
+    xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_VIDEO_YEAR)
     xbmcplugin.endOfDirectory(addon_handle)
 
 mode = args.get('mode')
 page = args.get('page')
 if not page:
     page = 1
+else:
+    try:
+        page = int(page)
+    except (ValueError, TypeError):
+        page = 1
 if not mode:
     list_main_menu()
 elif mode == "trending":
     data = api_client.client.api_request("/discover/trending", params={"page": page})
-    list_items(data, mode)
+    if data:
+        list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch trending", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)
 elif mode == "popular_movies":
     data = api_client.client.api_request("/discover/movies", params={"sortBy": "popularity.desc", "page": page})
-    list_items(data, mode)
+    if data:
+        list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch popular movies", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)
 elif mode == "popular_tv":
     data = api_client.client.api_request("/discover/tv", params={"sortBy": "popularity.desc", "page": page})
-    list_items(data, mode)
+    if data:
+        list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch popular TV shows", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)
 elif mode == "upcoming_movies":
     data = api_client.client.api_request("/discover/movies/upcoming", params={"page": page})
-    list_items(data, mode)
+    if data:
+        list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch upcoming movies", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)
 elif mode == "upcoming_tv":
     data = api_client.client.api_request("/discover/tv/upcoming", params={"page": page})
-    list_items(data, mode)
+    if data:
+        list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch upcoming TV shows", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)
 elif mode == "search": # functionality is completely broken
     search()
 elif mode == "request":
@@ -370,4 +463,8 @@ elif mode == "genre" and args.get("display_type") and args.get("genre_id"):
     display_type = args.get("display_type")
     genre_id = args.get("genre_id")
     data = api_client.client.api_request(f"/discover/{display_type}/genre/{genre_id}", params={"page": page})
-    list_items(data, mode, display_type, genre_id)
+    if data:
+        list_items(data, mode, display_type, genre_id)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch genre items", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(addon_handle)

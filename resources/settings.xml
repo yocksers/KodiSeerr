@@ -1,6 +1,5 @@
 <settings>
     <category label="General">
-        <setting id="api_service" type="enum" label="Service" values="Jellyseerr|Overseerr" default="0" />
         <setting id="jellyseerr_url" type="text" label="Server URL" default="http://localhost:5055" />
         <setting id="allow_self_signed" type="bool" label="Allow self-signed certificates" default="false" />
         <setting id="jellyseerr_username" type="text" label="Username" default="" />

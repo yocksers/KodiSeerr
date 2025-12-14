@@ -23,8 +23,11 @@ def main_loop():
     os.makedirs(data_path, exist_ok=True)
     notified_file = os.path.join(data_path, "notified_requests.json")
     try:
-        with open(notified_file, 'r') as f:
-            notified_ids = set(json.load(f))
+        if os.path.exists(notified_file):
+            with open(notified_file, 'r') as f:
+                notified_ids = set(json.load(f))
+        else:
+            notified_ids = set()
     except Exception:
         import traceback
         traceback.print_exc()
@@ -38,7 +41,9 @@ def main_loop():
                 import traceback
                 traceback.print_exc()
                 xbmc.log("[KodiSeerr Service] Fetch requests failed", xbmc.LOGERROR)
-            else:
+                requests_data = None
+            
+            if requests_data:
                 items = requests_data.get('results', []) if isinstance(requests_data, dict) else []
                 for item in items:
                     media = item.get('media') or {}
@@ -50,8 +55,8 @@ def main_loop():
                         xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now available!', xbmcgui.NOTIFICATION_INFO)
                         notified_ids.add(media_id)
 
-                with open(notified_file, 'w') as f:
-                    json.dump(list(notified_ids), f)
+                    with open(notified_file, 'w') as f:
+                        json.dump(list(notified_ids), f)
 
         if monitor.waitForAbort(get_interval()):
             break

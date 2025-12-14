@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="1.7.0" provider-name="Yock, vaughngx4">
+<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="1.7" provider-name="Yock, vaughngx4">
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
     </requires>
@@ -9,7 +9,7 @@
     <extension point="xbmc.service" library="service.py" startonstartup="true"/>
     <extension point="xbmc.addon.metadata">
         <summary lang="en">KodiSeerr</summary>
-        <description lang="en">JellySeerr and Overseerr Integration for Kodi.</description>
+        <description lang="en">JellySeerr Integration for Kodi.</description>
         <platform>all</platform>
         <assets>
             <icon>icon.png</icon>
