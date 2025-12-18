@@ -21,10 +21,6 @@ KodiSeerr is a lightweight and user-friendly Kodi add-on that lets you browse, s
 
 ---
 
-## Known Issues
-
-- Search not working
-
 ## Installation
 
 1. Download the latest ZIP release
