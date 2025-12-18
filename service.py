@@ -25,13 +25,18 @@ def main_loop():
     try:
         if os.path.exists(notified_file):
             with open(notified_file, 'r') as f:
-                notified_ids = set(json.load(f))
+                notified_data = json.load(f)
+                # Upgrade old format if needed
+                if isinstance(notified_data, list):
+                    notified_ids = {str(id): {'status': 5} for id in notified_data}
+                else:
+                    notified_ids = notified_data
         else:
-            notified_ids = set()
+            notified_ids = {}
     except Exception:
         import traceback
         traceback.print_exc()
-        notified_ids = set()
+        notified_ids = {}
 
     while not monitor.abortRequested():
         if addon.getSettingBool('enable_request_notifications'):
@@ -51,12 +56,26 @@ def main_loop():
                     title = media.get('title') or media.get('name') or "Media"
                     media_id = str(media.get('tmdbId') or media.get('id') or "")
 
-                    if media_status == 5 and media_id and media_id not in notified_ids:
-                        xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now available!', xbmcgui.NOTIFICATION_INFO)
-                        notified_ids.add(media_id)
+                    if media_id:
+                        # Get previous status
+                        previous_data = notified_ids.get(media_id, {})
+                        previous_status = previous_data.get('status', 0)
+                        
+                        # Notify on status changes
+                        if media_status == 5 and previous_status != 5:
+                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now available!', xbmcgui.NOTIFICATION_INFO, 5000)
+                            notified_ids[media_id] = {'status': 5, 'title': title}
+                        elif media_status == 3 and previous_status != 3 and addon.getSettingBool('notify_processing'):
+                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now processing', xbmcgui.NOTIFICATION_INFO, 4000)
+                            notified_ids[media_id] = {'status': 3, 'title': title}
+                        elif media_status == 2 and previous_status != 2 and addon.getSettingBool('notify_approved'):
+                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} request approved', xbmcgui.NOTIFICATION_INFO, 4000)
+                            notified_ids[media_id] = {'status': 2, 'title': title}
+                        elif media_status != previous_status and media_id not in notified_ids:
+                            notified_ids[media_id] = {'status': media_status, 'title': title}
 
                     with open(notified_file, 'w') as f:
-                        json.dump(list(notified_ids), f)
+                        json.dump(notified_ids, f)
 
         if monitor.waitForAbort(get_interval()):
             break

@@ -32,7 +32,7 @@ class JellyseerrClient:
         self.opener = urllib.request.build_opener(https_handler, cookie_handler)
 
     def login(self):
-        """Logs into the Jellyseerr/Overseerr instance."""
+        """Logs into the Jellyseerr instance."""
         if self.logged_in:
             return True
 

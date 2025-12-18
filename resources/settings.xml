@@ -4,8 +4,38 @@
         <setting id="allow_self_signed" type="bool" label="Allow self-signed certificates" default="false" />
         <setting id="jellyseerr_username" type="text" label="Username" default="" />
         <setting id="jellyseerr_password" type="text" option="hidden" label="Password" default="" />
+    </category>
+    <category label="Requests">
         <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="true" />
+        <setting id="show_quality_profiles" type="bool" label="Show quality profile selection" default="false" />
+        <setting id="default_quality_profile" type="text" label="Default quality profile (ID)" default="" />
+        <setting id="remember_last_quality" type="bool" label="Remember last quality choice" default="true" />
+        <setting id="enable_season_selection" type="bool" label="Enable TV season selection" default="true" />
+        <setting id="confirm_before_request" type="bool" label="Confirm before requesting" default="true" />
+        <setting id="show_request_status" type="bool" label="Show request status indicators" default="true" />
+    </category>
+    <category label="Notifications">
         <setting id="enable_request_notifications" type="bool" label="Enable Request Notifications" default="true" />
         <setting id="polling_interval" type="number" label="Polling Interval (Seconds)" default="300" />
+        <setting id="notify_processing" type="bool" label="Notify when processing starts" default="false" />
+        <setting id="notify_approved" type="bool" label="Notify when request approved" default="false" />
+    </category>
+    <category label="Display">
+        <setting id="items_per_page" type="number" label="Items per page" default="20" />
+        <setting id="show_year_in_title" type="bool" label="Show year in title" default="true" />
+        <setting id="show_media_type_badge" type="bool" label="Show media type badge" default="true" />
+        <setting id="show_ratings" type="bool" label="Show ratings" default="true" />
+    </category>
+    <category label="Performance">
+        <setting id="enable_caching" type="bool" label="Enable API caching" default="true" />
+        <setting id="cache_duration" type="number" label="Cache duration (minutes)" default="30" />
+        <setting id="cache_images" type="bool" label="Cache images" default="true" />
+    </category>
+    <category label="Advanced">
+        <setting id="debug_logging" type="bool" label="Enable debug logging" default="false" />
+        <setting id="test_connection" type="action" label="Test Server Connection" action="RunScript(special://home/addons/plugin.video.kodiseerr/default.py,test_connection)" />
+        <setting id="export_settings" type="action" label="Export Settings" action="RunScript(special://home/addons/plugin.video.kodiseerr/backup_restore.py,export)" />
+        <setting id="import_settings" type="action" label="Import Settings" action="RunScript(special://home/addons/plugin.video.kodiseerr/backup_restore.py,import)" />
+        <setting id="clear_cache" type="action" label="Clear Cache" action="RunScript(special://home/addons/plugin.video.kodiseerr/default.py,clear_cache)" />
     </category>
 </settings>

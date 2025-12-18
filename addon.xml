@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="1.7" provider-name="Yock, vaughngx4">
+<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="2.0" provider-name="Yock">
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
     </requires>
@@ -8,12 +8,35 @@
     </extension>
     <extension point="xbmc.service" library="service.py" startonstartup="true"/>
     <extension point="xbmc.addon.metadata">
-        <summary lang="en">KodiSeerr</summary>
-        <description lang="en">JellySeerr Integration for Kodi.</description>
+        <summary lang="en">KodiSeerr - Advanced Jellyseerr/Overseerr Integration</summary>
+        <description lang="en">Full-featured Jellyseerr and Overseerr integration for Kodi. Browse, search, and request movies and TV shows with advanced features including: request status indicators, favorites/watchlist, collections, statistics dashboard, season selection, quality profiles, API caching, detailed media info, context menus, and smart notifications.</description>
         <platform>all</platform>
         <assets>
             <icon>icon.png</icon>
             <fanart>fanart.jpg</fanart>
         </assets>
+        <news>
+v2.0 (2025-12-18)
+- Added request status indicators (Available, Pending, Processing)
+- Implemented local favorites/watchlist system
+- Added season/episode selection for TV show requests
+- Quality profile selection support
+- Collections browsing
+- Statistics dashboard
+- Recently added content section
+- Advanced pagination with jump-to-page
+- Detailed media information viewer
+- Context menu support (Show Details, Add to Favorites)
+- API response caching for improved performance
+- Request cancellation support
+- Enhanced notifications (processing, approved, available)
+- Connection test in settings
+- Request templates and preferences
+- Issue reporting functionality
+- Settings backup/restore
+- Confirmation dialogs before requests
+- Duplicate request detection
+- Many UI/UX improvements
+        </news>
     </extension>
 </addon>
