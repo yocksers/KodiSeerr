@@ -54,7 +54,6 @@ KodiSeerr is a comprehensive Kodi add-on that provides complete integration with
 
 ## 📥 Installation
 
-### Method 1: From ZIP (Recommended)
 1. Download the latest `Kodiseerr.zip` release
 2. In Kodi, navigate to **Add-ons**
 3. Click the **package icon** (top left) → **Install from zip file**
