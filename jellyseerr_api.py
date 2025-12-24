@@ -5,7 +5,7 @@ import ssl
 import xbmcaddon
 import xbmc
 import json
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 
 class JellyseerrClient:
     def __init__(self, base_url, username, password):
@@ -71,7 +71,7 @@ class JellyseerrClient:
         url = f"{self.base_url}/api/v1{endpoint}"
         if params:
             safe_params = {k: str(v) for k, v in params.items()}
-            url += '?' + urlencode(safe_params)
+            url += '?' + urlencode(safe_params, quote_via=quote)
 
         if data is not None:
             data = json.dumps(data).encode('utf-8')
