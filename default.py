@@ -10,10 +10,21 @@ import os
 import time
 import api_client
 
-addon = xbmcaddon.Addon()
-addon_handle = int(sys.argv[1])
-base_url = sys.argv[0]
-args = dict(urllib.parse.parse_qsl(sys.argv[2][1:]))
+addon = xbmcaddon.Addon('plugin.video.kodiseerr')
+
+# Handle both plugin and script execution
+try:
+    addon_handle = int(sys.argv[1]) if len(sys.argv) > 1 else -1
+except (ValueError, IndexError):
+    addon_handle = -1
+
+base_url = sys.argv[0] if len(sys.argv) > 0 else ''
+args = dict(urllib.parse.parse_qsl(sys.argv[2][1:])) if len(sys.argv) > 2 and sys.argv[2] else {}
+
+# Handle RunScript calls where the mode is passed as sys.argv[1]
+if addon_handle == -1 and len(sys.argv) > 1:
+    # This is a RunScript call, get the mode from argv[1]
+    args['mode'] = sys.argv[1]
 
 image_base = "https://image.tmdb.org/t/p/w500"
 enable_ask_4k = addon.getSettingBool('enable_ask_4k')
@@ -283,7 +294,6 @@ def list_main_menu():
         ('statistics', 'Statistics', 'DefaultAddonInfoProvider.png', False),
         (None, None, None, False),
         ('search', 'Search', 'DefaultAddonsSearch.png', True),
-        ('test_connection', 'Test Connection', 'DefaultAddonService.png', False),
     ]
     
     for item in items:

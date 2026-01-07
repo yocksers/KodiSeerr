@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="2.1" provider-name="Yock">
+<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="2.1.1" provider-name="Yock">
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
     </requires>
