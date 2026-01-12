@@ -6,7 +6,7 @@ import json
 import api_client
 import os
 
-addon = xbmcaddon.Addon('plugin.video.kodiseerr')
+addon = xbmcaddon.Addon()
 monitor = xbmc.Monitor()
 
 def get_interval():

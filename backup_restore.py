@@ -6,7 +6,7 @@ import json
 import os
 from datetime import datetime
 
-addon = xbmcaddon.Addon('plugin.video.kodiseerr')
+addon = xbmcaddon.Addon()
 
 def export_settings():
     """Export addon settings to a JSON file"""

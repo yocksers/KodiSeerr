@@ -18,7 +18,7 @@ class OverseerrClient:
 
     def init_opener(self):
         """Initializes the opener with SSL context based on addon settings."""
-        addon = xbmcaddon.Addon('plugin.video.kodiseerr')
+        addon = xbmcaddon.Addon()
         allow_self_signed = addon.getSettingBool("allow_self_signed")
 
         if allow_self_signed:
