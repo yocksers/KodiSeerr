@@ -401,6 +401,9 @@ def list_items(data, mode, display_type=None, genre_id=None):
     current_page = data.get('page', 1)
     total_pages = data.get('totalPages', 1)
     
+    is_widget = xbmc.getCondVisibility('Window.IsVisible(home)')
+    hide_pagination = addon.getSettingBool('hide_pagination_in_widgets')
+    
     if items:
         first_media_type = items[0].get('mediaType', 'video')
         if first_media_type == 'movie':
@@ -412,31 +415,32 @@ def list_items(data, mode, display_type=None, genre_id=None):
     else:
         xbmcplugin.setContent(addon_handle, 'videos')
 
-    page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
-    page_info.setArt({'icon': 'DefaultAddonNone.png'})
-    xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
+    if not (is_widget and hide_pagination):
+        page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+        page_info.setArt({'icon': 'DefaultAddonNone.png'})
+        xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
 
-    params = {'mode': 'jump_to_page', 'original_mode': mode}
-    if mode == "genre":
-        params['genre_id'] = genre_id
-        params['display_type'] = display_type
-    jump_url = build_url(params)
-    jump_item = xbmcgui.ListItem(label='[B]Jump to Page...[/B]')
-    jump_item.setArt({'icon': 'DefaultAddonNone.png'})
-    xbmcplugin.addDirectoryItem(addon_handle, jump_url, jump_item, True)
-
-    if current_page > 1:
-        params = {
-            'mode': mode,
-            'page': current_page - 1
-        }
+        params = {'mode': 'jump_to_page', 'original_mode': mode}
         if mode == "genre":
             params['genre_id'] = genre_id
             params['display_type'] = display_type
-        prev_page_url = build_url(params)
-        prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
-        prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
-        xbmcplugin.addDirectoryItem(addon_handle, prev_page_url, prev_item, True)
+        jump_url = build_url(params)
+        jump_item = xbmcgui.ListItem(label='[B]Jump to Page...[/B]')
+        jump_item.setArt({'icon': 'DefaultAddonNone.png'})
+        xbmcplugin.addDirectoryItem(addon_handle, jump_url, jump_item, True)
+
+        if current_page > 1:
+            params = {
+                'mode': mode,
+                'page': current_page - 1
+            }
+            if mode == "genre":
+                params['genre_id'] = genre_id
+                params['display_type'] = display_type
+            prev_page_url = build_url(params)
+            prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
+            prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
+            xbmcplugin.addDirectoryItem(addon_handle, prev_page_url, prev_item, True)
 
     show_status = addon.getSettingBool('show_request_status')
     
@@ -468,18 +472,19 @@ def list_items(data, mode, display_type=None, genre_id=None):
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(addon_handle, url, list_item, False)
 
-    if current_page < total_pages:
-        params = {
-            'mode': mode,
-            'page': current_page + 1
-        }
-        if mode == "genre":
-            params['genre_id'] = genre_id
-            params['display_type'] = display_type
-        next_page_url = build_url(params)
-        next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
-        next_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
-        xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
+    if not (is_widget and hide_pagination):
+        if current_page < total_pages:
+            params = {
+                'mode': mode,
+                'page': current_page + 1
+            }
+            if mode == "genre":
+                params['genre_id'] = genre_id
+                params['display_type'] = display_type
+            next_page_url = build_url(params)
+            next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
+            next_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
+            xbmcplugin.addDirectoryItem(addon_handle, next_page_url, next_item, True)
     
     xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
     xbmcplugin.addSortMethod(addon_handle, xbmcplugin.SORT_METHOD_LABEL)

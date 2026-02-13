@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="2.1" provider-name="Yock">
+<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="2.2" provider-name="Yock">
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
     </requires>
@@ -15,28 +15,5 @@
             <icon>icon.png</icon>
             <fanart>fanart.jpg</fanart>
         </assets>
-        <news>
-v2.0 (2025-12-18)
-- Added request status indicators (Available, Pending, Processing)
-- Implemented local favorites/watchlist system
-- Added season/episode selection for TV show requests
-- Quality profile selection support
-- Collections browsing
-- Statistics dashboard
-- Recently added content section
-- Advanced pagination with jump-to-page
-- Detailed media information viewer
-- Context menu support (Show Details, Add to Favorites)
-- API response caching for improved performance
-- Request cancellation support
-- Enhanced notifications (processing, approved, available)
-- Connection test in settings
-- Request templates and preferences
-- Issue reporting functionality
-- Settings backup/restore
-- Confirmation dialogs before requests
-- Duplicate request detection
-- Many UI/UX improvements
-        </news>
     </extension>
 </addon>

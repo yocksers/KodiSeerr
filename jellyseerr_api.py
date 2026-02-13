@@ -8,10 +8,12 @@ import json
 from urllib.parse import urlencode, quote
 
 class JellyseerrClient:
-    def __init__(self, base_url, username, password):
+    def __init__(self, base_url, username, password, api_token=None, auth_method="password"):
         self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
+        self.api_token = api_token
+        self.auth_method = auth_method
         self.cookie_jar = http.cookiejar.CookieJar()
         self.opener = None
         self.logged_in = False
@@ -34,6 +36,13 @@ class JellyseerrClient:
     def login(self):
         """Logs into the Jellyseerr instance."""
         if self.logged_in:
+            return True
+
+        if self.auth_method == "api_token":
+            if not self.api_token:
+                xbmc.log(f"[kodiseerr] API token authentication selected but no token provided", xbmc.LOGERROR)
+                return False
+            self.logged_in = True
             return True
 
         # Jellyseerr with Jellyfin authentication
@@ -78,6 +87,8 @@ class JellyseerrClient:
 
         req = urllib.request.Request(url, data=data, method=method)
         req.add_header("Accept", "application/json")
+        if self.auth_method == "api_token" and self.api_token:
+            req.add_header("X-Api-Key", self.api_token)
         if method == "POST":
             req.add_header("Content-Type", "application/json")
 
@@ -94,6 +105,8 @@ class JellyseerrClient:
                     try:
                         req = urllib.request.Request(url, data=data, method=method)
                         req.add_header("Accept", "application/json")
+                        if self.auth_method == "api_token" and self.api_token:
+                            req.add_header("X-Api-Key", self.api_token)
                         if method == "POST":
                             req.add_header("Content-Type", "application/json")
                         with self.opener.open(req) as resp:
