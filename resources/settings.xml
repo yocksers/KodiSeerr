@@ -2,10 +2,14 @@
     <category label="General">
         <setting id="jellyseerr_url" type="text" label="Server URL" default="http://localhost:5055" />
         <setting id="allow_self_signed" type="bool" label="Allow self-signed certificates" default="false" />
-        <setting id="auth_method" type="select" label="Authentication Method" default="password" lvalues="Password|API Token" values="password|api_token" />
-        <setting id="jellyseerr_username" type="text" label="Username" default="" visible="eq(-1,password)" />
-        <setting id="jellyseerr_password" type="text" option="hidden" label="Password" default="" visible="eq(-2,password)" />
-        <setting id="jellyseerr_api_token" type="text" label="API Token" default="" visible="eq(-3,api_token)" />
+        <setting type="sep" />
+        <setting type="lsep" label="Password Authentication" />
+        <setting id="jellyseerr_username" type="text" label="Username" default="" />
+        <setting id="jellyseerr_password" type="text" option="hidden" label="Password" default="" />
+        <setting type="sep" />
+        <setting type="lsep" label="OR API Token Authentication" />
+        <setting id="jellyseerr_api_token" type="text" label="API Token" default="" />
+        <setting id="auth_method" type="enum" label="Use Authentication Method" default="password" values="password|api_token" lvalues="Password|API Token" />
     </category>
     <category label="Requests">
         <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="true" />

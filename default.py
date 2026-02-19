@@ -242,11 +242,25 @@ def get_status_label(status):
 def test_connection():
     """Test connection to Jellyseerr server"""
     try:
-        if api_client.client.login():
+        from jellyseerr_api import JellyseerrClient
+        
+        test_url = addon.getSetting("jellyseerr_url").rstrip("/")
+        test_username = addon.getSetting("jellyseerr_username")
+        test_password = addon.getSetting("jellyseerr_password")
+        test_api_token = addon.getSetting("jellyseerr_api_token")
+        test_auth_method = addon.getSetting("auth_method")
+        
+        if not test_auth_method:
+            test_auth_method = "password"
+        
+        test_client = JellyseerrClient(test_url, test_username, test_password, test_api_token, test_auth_method)
+        
+        if test_client.login():
             xbmcgui.Dialog().notification('KodiSeerr', 'Connection successful!', xbmcgui.NOTIFICATION_INFO, 3000)
         else:
             xbmcgui.Dialog().notification('KodiSeerr', 'Connection failed. Check settings.', xbmcgui.NOTIFICATION_ERROR, 5000)
     except Exception as e:
+        xbmc.log(f"[KodiSeerr] Test connection error: {e}", xbmc.LOGERROR)
         xbmcgui.Dialog().notification('KodiSeerr', f'Error: {str(e)}', xbmcgui.NOTIFICATION_ERROR, 5000)
     xbmc.executebuiltin("Action(Back)")
 
@@ -498,11 +512,18 @@ def jump_to_page():
     if keyboard:
         try:
             page = int(keyboard)
+            if page < 1:
+                xbmcgui.Dialog().notification('KodiSeerr', 'Page number must be at least 1', xbmcgui.NOTIFICATION_ERROR)
+                return
+            
             original_mode = args.get('original_mode')
             params = {'mode': original_mode, 'page': page}
+            
             if args.get('genre_id'):
                 params['genre_id'] = args.get('genre_id')
+            if args.get('display_type'):
                 params['display_type'] = args.get('display_type')
+            
             xbmc.executebuiltin(f'Container.Update({build_url(params)})')
         except ValueError:
             xbmcgui.Dialog().notification('KodiSeerr', 'Invalid page number', xbmcgui.NOTIFICATION_ERROR)
@@ -734,9 +755,14 @@ def cancel_request(request_id):
         except Exception as e:
             xbmcgui.Dialog().notification('KodiSeerr', f'Failed to cancel: {str(e)}', xbmcgui.NOTIFICATION_ERROR)
 
-def show_requests(data, mode, current_page=1):
-    xbmcplugin.setContent(addon_handle, 'videos')
-    items = data.get('results', [])
+def show_requ_item = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+    page_info_item.setArt({'icon': 'DefaultAddonNone.png'})
+    xbmcplugin.addDirectoryItem(addon_handle, '', page_info_item, False)
+
+    jump_url = build_url({'mode': 'jump_to_page', 'original_mode': mode})
+    jump_item = xbmcgui.ListItem(label='[B]Jump to Page...[/B]')
+    jump_item.setArt({'icon': 'DefaultAddonNone.png'})
+    xbmcplugin.addDirectoryItem(addon_handle, jump_url, jump_item, Tru
     page_info = data.get('pageInfo', {})
     total_results = page_info.get('results', len(items))
     total_pages = page_info.get('pages', 1)
