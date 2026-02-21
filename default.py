@@ -755,21 +755,23 @@ def cancel_request(request_id):
         except Exception as e:
             xbmcgui.Dialog().notification('KodiSeerr', f'Failed to cancel: {str(e)}', xbmcgui.NOTIFICATION_ERROR)
 
-def show_requ_item = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+def show_requests(data, mode, current_page):
+    """Display user's requests with pagination"""
+    xbmcplugin.setContent(addon_handle, 'videos')
+    
+    items = data.get('results', [])
+    page_info = data.get('pageInfo', {})
+    total_results = page_info.get('results', len(items))
+    total_pages = page_info.get('pages', 1)
+
+    page_info_item = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
     page_info_item.setArt({'icon': 'DefaultAddonNone.png'})
     xbmcplugin.addDirectoryItem(addon_handle, '', page_info_item, False)
 
     jump_url = build_url({'mode': 'jump_to_page', 'original_mode': mode})
     jump_item = xbmcgui.ListItem(label='[B]Jump to Page...[/B]')
     jump_item.setArt({'icon': 'DefaultAddonNone.png'})
-    xbmcplugin.addDirectoryItem(addon_handle, jump_url, jump_item, Tru
-    page_info = data.get('pageInfo', {})
-    total_results = page_info.get('results', len(items))
-    total_pages = page_info.get('pages', 1)
-
-    page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
-    page_info.setArt({'icon': 'DefaultAddonNone.png'})
-    xbmcplugin.addDirectoryItem(addon_handle, '', page_info, False)
+    xbmcplugin.addDirectoryItem(addon_handle, jump_url, jump_item, True)
 
     if current_page > 1:
         prev_page_url = build_url({'mode': mode, 'page': current_page - 1})
