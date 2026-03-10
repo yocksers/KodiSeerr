@@ -2,6 +2,7 @@ import urllib.request
 import urllib.error
 import http.cookiejar
 import ssl
+import gzip
 import xbmcaddon
 import xbmc
 import json
@@ -19,8 +20,14 @@ class JellyseerrClient:
         self.logged_in = False
         self.init_opener()
 
+    @staticmethod
+    def _decode_response(resp):
+        raw = resp.read()
+        if resp.headers.get('Content-Encoding') == 'gzip':
+            raw = gzip.decompress(raw)
+        return json.loads(raw.decode())
+
     def init_opener(self):
-        """Initializes the opener with SSL context based on addon settings."""
         addon = xbmcaddon.Addon()
         allow_self_signed = addon.getSettingBool("allow_self_signed")
 
@@ -55,10 +62,11 @@ class JellyseerrClient:
         req = urllib.request.Request(login_url, data=data, method="POST")
         req.add_header("Content-Type", "application/json")
         req.add_header("Accept", "application/json")
+        req.add_header("Accept-Encoding", "gzip")
 
         try:
-            with self.opener.open(req) as resp:
-                response_data = json.loads(resp.read().decode())
+            with self.opener.open(req, timeout=15) as resp:
+                self._decode_response(resp)
                 xbmc.log(f"[kodiseerr] Login successful, cookies: {len(self.cookie_jar)}", xbmc.LOGDEBUG)
             self.logged_in = True
             return True
@@ -87,30 +95,31 @@ class JellyseerrClient:
 
         req = urllib.request.Request(url, data=data, method=method)
         req.add_header("Accept", "application/json")
+        req.add_header("Accept-Encoding", "gzip")
         if self.auth_method == "api_token" and self.api_token:
             req.add_header("X-Api-Key", self.api_token)
         if method == "POST":
             req.add_header("Content-Type", "application/json")
 
         try:
-            with self.opener.open(req) as resp:
-                return json.loads(resp.read().decode())
+            with self.opener.open(req, timeout=15) as resp:
+                return self._decode_response(resp)
         except urllib.error.HTTPError as e:
             # If we get 401, try to login again once
             if e.code == 401 and self.logged_in:
                 xbmc.log(f"[kodiseerr] Got 401, retrying login", xbmc.LOGDEBUG)
                 self.logged_in = False
                 if self.login():
-                    # Retry the request
                     try:
                         req = urllib.request.Request(url, data=data, method=method)
                         req.add_header("Accept", "application/json")
+                        req.add_header("Accept-Encoding", "gzip")
                         if self.auth_method == "api_token" and self.api_token:
                             req.add_header("X-Api-Key", self.api_token)
                         if method == "POST":
                             req.add_header("Content-Type", "application/json")
-                        with self.opener.open(req) as resp:
-                            return json.loads(resp.read().decode())
+                        with self.opener.open(req, timeout=15) as resp:
+                            return self._decode_response(resp)
                     except Exception as retry_e:
                         xbmc.log(f"[kodiseerr] Retry failed: {retry_e}", xbmc.LOGERROR)
                         return None

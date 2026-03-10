@@ -3,13 +3,11 @@
         <setting id="jellyseerr_url" type="text" label="Server URL" default="http://localhost:5055" />
         <setting id="allow_self_signed" type="bool" label="Allow self-signed certificates" default="false" />
         <setting type="sep" />
-        <setting type="lsep" label="Password Authentication" />
+        <setting id="use_api_token" type="bool" label="Use API Token Authentication" default="false" />
+        <setting id="jellyseerr_api_token" type="text" label="API Token" default="" />
+        <setting type="sep" />
         <setting id="jellyseerr_username" type="text" label="Username" default="" />
         <setting id="jellyseerr_password" type="text" option="hidden" label="Password" default="" />
-        <setting type="sep" />
-        <setting type="lsep" label="OR API Token Authentication" />
-        <setting id="jellyseerr_api_token" type="text" label="API Token" default="" />
-        <setting id="auth_method" type="enum" label="Use Authentication Method" default="password" values="password|api_token" lvalues="Password|API Token" />
     </category>
     <category label="Requests">
         <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="true" />
