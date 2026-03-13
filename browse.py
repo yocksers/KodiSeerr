@@ -1,3 +1,4 @@
+import concurrent.futures
 import threading
 import xbmc
 import xbmcplugin
@@ -112,14 +113,26 @@ def show_collection_details(collection_id):
         if data:
             cache.set_cached(cache_key, data)
     if data:
-        for item in data.get('parts', []):
+        parts = data.get('parts', [])
+        show_request_status = context.addon.getSettingBool('show_request_status')
+        statuses = {}
+        if show_request_status and parts:
+            api_client.client.login()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(parts))) as executor:
+                future_to_id = {
+                    executor.submit(media_utils.get_media_status, 'movie', item.get('id'), item): item.get('id')
+                    for item in parts
+                }
+                for future, key_id in future_to_id.items():
+                    statuses[key_id] = future.result()
+        for item in parts:
             media_type = 'movie'
             title = item.get('title') or item.get('name')
             release_date = item.get('releaseDate')
             year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
             label = f"{title} ({year})" if year else title
-            if context.addon.getSettingBool('show_request_status'):
-                status = media_utils.get_media_status(media_type, item.get('id'), item)
+            if show_request_status:
+                status = statuses.get(item.get('id'), 0)
                 status_label = media_utils.get_status_label(status)
                 if status_label:
                     label += f" {status_label}"
@@ -178,6 +191,16 @@ def list_items(data, mode, display_type=None, genre_id=None):
             xbmcplugin.addDirectoryItem(context.addon_handle, build_url(prev_params), prev_item, True)
 
     show_status = context.addon.getSettingBool('show_request_status')
+    statuses = {}
+    if show_status and items:
+        api_client.client.login()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(items))) as executor:
+            future_to_key = {
+                executor.submit(media_utils.get_media_status, item.get('mediaType'), item.get('id'), item): (item.get('mediaType'), item.get('id'))
+                for item in items
+            }
+            for future, key in future_to_key.items():
+                statuses[key] = future.result()
     for item in items:
         media_type = item.get('mediaType')
         title = item.get('title') or item.get('name')
@@ -185,7 +208,7 @@ def list_items(data, mode, display_type=None, genre_id=None):
         year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
         label = f"{title} ({year})" if year else title
         if show_status:
-            status_label = media_utils.get_status_label(media_utils.get_media_status(media_type, item.get('id'), item))
+            status_label = media_utils.get_status_label(statuses.get((media_type, item.get('id')), 0))
             if status_label:
                 label += f" {status_label}"
         item_id = item.get('id')
@@ -359,6 +382,16 @@ def search():
             cache.set_cached(cache_key, data)
     results = data.get('results', []) if data else []
     show_status = context.addon.getSettingBool('show_request_status')
+    statuses = {}
+    if show_status and results:
+        api_client.client.login()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(results))) as executor:
+            future_to_key = {
+                executor.submit(media_utils.get_media_status, item.get('mediaType', 'movie'), item.get('id'), item): (item.get('mediaType', 'movie'), item.get('id'))
+                for item in results
+            }
+            for future, key in future_to_key.items():
+                statuses[key] = future.result()
     for item in results:
         media_type = item.get('mediaType', 'movie')
         title = item.get('title') or item.get('name')
@@ -367,7 +400,7 @@ def search():
         type_label = "(Movie)" if media_type == "movie" else "(TV Show)"
         full_title = f"{title} ({year}) {type_label}" if year else f"{title} {type_label}"
         if show_status:
-            status_label = media_utils.get_status_label(media_utils.get_media_status(media_type, item.get('id'), item))
+            status_label = media_utils.get_status_label(statuses.get((media_type, item.get('id')), 0))
             if status_label:
                 full_title += f" {status_label}"
         item_id = item.get('id')

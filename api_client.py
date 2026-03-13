@@ -25,6 +25,8 @@ def get_client():
     )
     
     if _client_instance is None or _cached_settings != current_settings:
+        if _client_instance is not None:
+            _client_instance.close()
         url, username, password, api_token, auth_method, _ = current_settings
         _client_instance = JellyseerrClient(url, username, password, api_token, auth_method)
         _cached_settings = current_settings
