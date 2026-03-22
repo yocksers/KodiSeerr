@@ -11,14 +11,8 @@ from utils import build_url
 
 def test_connection():
     try:
-        from jellyseerr_api import JellyseerrClient
-        test_url = context.addon.getSetting("jellyseerr_url").rstrip("/")
-        test_username = context.addon.getSetting("jellyseerr_username")
-        test_password = context.addon.getSetting("jellyseerr_password")
-        test_api_token = context.addon.getSetting("jellyseerr_api_token")
-        test_auth_method = "api_token" if context.addon.getSettingBool("use_api_token") else "password"
-        test_client = JellyseerrClient(test_url, test_username, test_password, test_api_token, test_auth_method)
-        if test_client.login():
+        api_client.client.logged_in = False
+        if api_client.client.login():
             xbmcgui.Dialog().notification('KodiSeerr', 'Connection successful!', xbmcgui.NOTIFICATION_INFO, 3000)
         else:
             xbmcgui.Dialog().notification('KodiSeerr', 'Connection failed. Check settings.', xbmcgui.NOTIFICATION_ERROR, 5000)

@@ -13,8 +13,10 @@ def export_settings():
     try:
         # Get all settings
         settings = {
-            'jellyseerr_url': addon.getSetting('jellyseerr_url'),
-            'jellyseerr_username': addon.getSetting('jellyseerr_username'),
+            'seerr_url': addon.getSetting('seerr_url'),
+            'seerr_username': addon.getSetting('seerr_username'),
+            'use_api_token': addon.getSettingBool('use_api_token'),
+            'seerr_api_token': addon.getSetting('seerr_api_token'),
             'allow_self_signed': addon.getSettingBool('allow_self_signed'),
             'enable_ask_4k': addon.getSettingBool('enable_ask_4k'),
             'show_quality_profiles': addon.getSettingBool('show_quality_profiles'),
@@ -71,7 +73,7 @@ def import_settings():
         
         # Apply settings (skip password for security)
         for key, value in settings.items():
-            if key in ['export_date', 'jellyseerr_password']:
+            if key in ['export_date', 'seerr_password']:
                 continue
             try:
                 if isinstance(value, bool):

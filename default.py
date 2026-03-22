@@ -7,6 +7,7 @@ import browse
 import requests_view
 import actions
 import api_client
+import play_local_file
 
 context.init(sys.argv)
 
@@ -47,6 +48,8 @@ elif mode == "report_issue":
     actions.report_issue(context.args.get('type'), context.args.get('id'))
 elif mode == "cancel_request":
     requests_view.cancel_request(context.args.get('request_id'))
+elif mode == "play_local_file":
+    play_local_file.play_local_file(context.args.get('type'), context.args.get('id'))
 elif mode == "jump_to_page":
     browse.jump_to_page()
 elif mode == "collections":

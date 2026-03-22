@@ -161,12 +161,22 @@ def show_requests(data, mode, current_page):
         if media_status in [2, 3]:
             ctx_menu.append(('Cancel Request', f'RunPlugin({build_url({"mode": "cancel_request", "request_id": request_id})})'))
         ctx_menu.append(('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": media_id})})'))
-        url = build_url({'mode': 'request', 'type': media_type, 'id': media_id})
+        if media_status == 5 and media_type == "movie":
+            url = build_url({'mode': 'play_local_file', 'type': media_type, 'id': media_id})
+            is_folder = False
+        elif media_status == 5 and media_type == "tv":
+            url = build_url({'mode': 'tvshow', 'id': media_id})
+            is_folder = True
+        else:
+            url = build_url({'mode': 'request', 'type': media_type, 'id': media_id})
+            is_folder = False
         list_item = xbmcgui.ListItem(label=label_text)
+        if media_status == 5 and media_type == "movie":
+            list_item.setProperty('IsPlayable', 'true')
         list_item.addContextMenuItems(ctx_menu)
         media_utils.set_info_tag(list_item, {'title': label_text, 'plot': f"Media ID: {media_id}, Type: {media_type}"})
         list_item.setArt(media_utils.make_art(media_data))
-        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
+        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
 
     if current_page < total_pages:
         next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')

@@ -74,8 +74,8 @@ def main_loop():
                         elif media_status != previous_status and media_id not in notified_ids:
                             notified_ids[media_id] = {'status': media_status, 'title': title}
 
-                    with open(notified_file, 'w') as f:
-                        json.dump(notified_ids, f)
+                with open(notified_file, 'w') as f:
+                    json.dump(notified_ids, f)
 
         if monitor.waitForAbort(get_interval()):
             break

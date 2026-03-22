@@ -289,9 +289,19 @@ def list_recently_added():
 
     all_items = []
     if recent_movies:
-        all_items.extend(recent_movies.get('results', []))
+        for item in recent_movies.get('results', []):
+            item.setdefault('mediaType', 'movie')
+            all_items.append(item)
     if recent_tv:
-        all_items.extend(recent_tv.get('results', []))
+        for item in recent_tv.get('results', []):
+            item.setdefault('mediaType', 'tv')
+            all_items.append(item)
+
+    def _added_at(item):
+        media_info = item.get('mediaInfo') or {}
+        return media_info.get('mediaAddedAt') or media_info.get('createdAt') or ""
+
+    all_items.sort(key=_added_at, reverse=True)
 
     for item in all_items[:20]:
         media_type = item.get('mediaType')
