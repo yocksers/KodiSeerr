@@ -54,7 +54,10 @@ def make_info(item, media_type):
     plot = item.get('overview', '')
     title = item.get('title') or item.get('name')
 
+    type_label = {'movie': 'Movie', 'tv': 'Series', 'season': 'Series', 'episode': 'Series'}.get(media_type)
+
     rich_plot = f"{title} ({year})"
+    if type_label: rich_plot += f"\nType: {type_label}"
     if genres: rich_plot += f"\nGenres: {genres}"
     if studio: rich_plot += f"\nStudio: {studio}"
     if country: rich_plot += f"\nCountry: {country}"
