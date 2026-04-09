@@ -9,6 +9,115 @@ import storage
 from utils import build_url
 
 
+_PERM_ADMIN = 2
+_PERM_MANAGE_REQUESTS = 8
+
+
+def has_manage_requests_permission():
+    try:
+        user = api_client.client.api_request('/auth/me')
+        if not user:
+            return False
+        perms = user.get('permissions', 0)
+        return bool(perms & _PERM_ADMIN) or bool(perms & _PERM_MANAGE_REQUESTS)
+    except Exception:
+        return False
+
+
+def _format_free_space(bytes_val):
+    if not bytes_val:
+        return ''
+    tb = bytes_val / (1024 ** 4)
+    if tb >= 1:
+        return f'{tb:.2f} TB'
+    return f'{bytes_val / (1024 ** 3):.2f} GB'
+
+
+def get_server_options(media_type, is4k=False):
+    service = 'radarr' if media_type == 'movie' else 'sonarr'
+    try:
+        servers = api_client.client.api_request(f'/settings/{service}')
+        if not servers or not isinstance(servers, list):
+            return None
+        server = None
+        for s in servers:
+            if s.get('is4k', False) == is4k and s.get('isDefault', False):
+                server = s
+                break
+        if not server:
+            for s in servers:
+                if s.get('is4k', False) == is4k:
+                    server = s
+                    break
+        if not server:
+            server = servers[0]
+        server_id = server.get('id')
+        default_profile_id = server.get('activeProfileId')
+        default_root_folder = server.get('activeDirectory', '')
+        profiles = api_client.client.api_request(f'/settings/{service}/{server_id}/profiles') or []
+        root_folders = api_client.client.api_request(f'/settings/{service}/{server_id}/rootfolders') or []
+        tags = api_client.client.api_request(f'/settings/{service}/{server_id}/tags') or []
+        return {
+            'server_id': server_id,
+            'default_profile_id': default_profile_id,
+            'default_root_folder': default_root_folder,
+            'profiles': profiles,
+            'root_folders': root_folders,
+            'tags': tags,
+        }
+    except Exception as e:
+        xbmc.log(f"[KodiSeerr] Failed to get server options: {e}", xbmc.LOGERROR)
+        return None
+
+
+def prompt_advanced_options(media_type, is4k=False):
+    opts = get_server_options(media_type, is4k)
+    if not opts:
+        return {}
+    result = {'server_id': opts['server_id']}
+    profiles = opts.get('profiles', [])
+    if profiles:
+        default_id = opts.get('default_profile_id')
+        names = []
+        default_idx = 0
+        for i, p in enumerate(profiles):
+            name = p.get('name', str(p.get('id', i)))
+            if p.get('id') == default_id:
+                name += ' (Default)'
+                default_idx = i
+            names.append(name)
+        sel = xbmcgui.Dialog().select('Quality Profile', names, preselect=default_idx)
+        if sel < 0:
+            return None
+        result['profile_id'] = profiles[sel].get('id')
+    root_folders = opts.get('root_folders', [])
+    if root_folders:
+        default_folder = opts.get('default_root_folder', '')
+        names = []
+        default_idx = 0
+        for i, f in enumerate(root_folders):
+            path = f.get('path', '')
+            free = _format_free_space(f.get('freeSpace'))
+            name = f'{path} ({free})' if free else path
+            if path == default_folder:
+                name += ' (Default)'
+                default_idx = i
+            names.append(name)
+        sel = xbmcgui.Dialog().select('Root Folder', names, preselect=default_idx)
+        if sel < 0:
+            return None
+        result['root_folder'] = root_folders[sel].get('path', '')
+    tags = opts.get('tags', [])
+    if tags:
+        tag_labels = [t.get('label', str(t.get('id', ''))) for t in tags]
+        selected_tags = xbmcgui.Dialog().multiselect('Tags', tag_labels)
+        if selected_tags is None:
+            return None
+        if selected_tags:
+            result['tags'] = [tags[i].get('id') for i in selected_tags]
+    return result
+
+
 def get_quality_profiles():
     try:
         data = api_client.client.api_request('/settings/radarr')
@@ -70,7 +179,19 @@ def do_request(media_type, media_id):
             prefs['last_4k_choice'] = is4k
             storage.save_preferences(prefs)
 
-    if context.addon.getSettingBool('show_quality_profiles'):
+    server_id = None
+    root_folder = None
+    tags = None
+
+    if has_manage_requests_permission():
+        advanced = prompt_advanced_options(media_type, is4k)
+        if advanced is None:
+            return
+        server_id = advanced.get('server_id')
+        quality_profile = advanced.get('profile_id')
+        root_folder = advanced.get('root_folder')
+        tags = advanced.get('tags')
+    elif context.addon.getSettingBool('show_quality_profiles'):
         profiles = get_quality_profiles()
         if profiles:
             profile_names = [p[1] for p in profiles]
@@ -93,8 +214,14 @@ def do_request(media_type, media_id):
     payload = {"mediaType": media_type, "mediaId": int(media_id), "is4k": is4k}
     if media_type == "tv":
         payload["seasons"] = seasons_to_request
+    if server_id is not None:
+        payload["serverId"] = server_id
     if quality_profile:
         payload["profileId"] = quality_profile
+    if root_folder:
+        payload["rootFolder"] = root_folder
+    if tags:
+        payload["tags"] = tags
 
     try:
         api_client.client.api_request("/request", method="POST", data=payload)

@@ -93,7 +93,11 @@ def set_info_tag(list_item, info):
     if info.get('year'):
         try: tag.setYear(int(info['year']))
         except Exception: pass
-    if info.get('genre'): tag.setGenre(info['genre'])
+    if info.get('genre'):
+        try:
+            tag.setGenres([info['genre']])
+        except AttributeError:
+            tag.setGenre(info['genre'])
     if info.get('rating'):
         try: tag.setRating(float(info['rating']))
         except Exception: pass
@@ -106,9 +110,21 @@ def set_info_tag(list_item, info):
         except Exception: pass
     if info.get('mpaa'): tag.setMpaa(info['mpaa'])
     if info.get('cast'): tag.setCast(info['cast'])
-    if info.get('director'): tag.setDirector(info['director'])
-    if info.get('studio'): tag.setStudio(info['studio'])
-    if info.get('country'): tag.setCountry(info['country'])
+    if info.get('director'):
+        try:
+            tag.setDirectors([info['director']])
+        except AttributeError:
+            tag.setDirector(info['director'])
+    if info.get('studio'):
+        try:
+            tag.setStudios([info['studio']])
+        except AttributeError:
+            tag.setStudio(info['studio'])
+    if info.get('country'):
+        try:
+            tag.setCountries([info['country']])
+        except AttributeError:
+            tag.setCountry(info['country'])
     if info.get('mediatype'): tag.setMediaType(info['mediatype'])
 
 

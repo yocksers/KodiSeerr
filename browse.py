@@ -13,6 +13,8 @@ from utils import build_url
 def list_main_menu():
     xbmcplugin.setContent(context.addon_handle, 'files')
     items = [
+        ('search', 'Search', 'DefaultAddonsSearch.png', True),
+        (None, None, None, False),
         ('trending', 'Trending', 'DefaultMovies.png', True),
         ('popular_movies', 'Popular Movies', 'DefaultMovies.png', True),
         ('popular_tv', 'Popular TV Shows', 'DefaultTVShows.png', True),
@@ -26,10 +28,10 @@ def list_main_menu():
         ('collections', 'Collections', 'DefaultSets.png', True),
         (None, None, None, False),
         ('favorites', 'My Favorites', 'DefaultFavourites.png', True),
+        ('profile', 'My Profile', 'DefaultActor.png', True),
         ('requests', 'Request Progress', 'DefaultInProgressShows.png', True),
         ('statistics', 'Statistics', 'DefaultAddonInfoProvider.png', False),
         (None, None, None, False),
-        ('search', 'Search', 'DefaultAddonsSearch.png', True),
         ('test_connection', 'Test Connection', 'DefaultAddonService.png', False),
     ]
     for item in items:

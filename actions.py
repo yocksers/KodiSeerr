@@ -110,6 +110,106 @@ def list_favorites():
     xbmcplugin.endOfDirectory(context.addon_handle)
 
 
+def show_profile():
+    user = api_client.client.api_request('/auth/me')
+    if not user:
+        xbmcgui.Dialog().notification('KodiSeerr', 'Could not load profile', xbmcgui.NOTIFICATION_ERROR)
+        return
+
+    xbmcplugin.setContent(context.addon_handle, 'files')
+
+    display_name = user.get('displayName') or user.get('username') or user.get('email', 'Unknown')
+    email = user.get('email', '')
+    header_label = f"[B]{display_name}[/B]"
+    if email and email != display_name:
+        header_label += f"  ({email})"
+    header_item = xbmcgui.ListItem(label=header_label)
+    header_item.setArt({'icon': 'DefaultActor.png'})
+    xbmcplugin.addDirectoryItem(context.addon_handle, '', header_item, False)
+
+    total_requests = user.get('requestCount', 0)
+    total_item = xbmcgui.ListItem(label=f'Total Requests:  {total_requests}')
+    total_item.setArt({'icon': 'DefaultAddonInfoProvider.png'})
+    xbmcplugin.addDirectoryItem(context.addon_handle, '', total_item, False)
+
+    def _quota_label(quota):
+        if not quota:
+            return 'Unlimited'
+        limit = quota.get('limit', 0)
+        used = quota.get('used', 0)
+        remaining = quota.get('remaining', limit)
+        if not limit:
+            return 'Unlimited'
+        return f'{used} used / {limit} limit  ({remaining} remaining)'
+
+    movie_quota = user.get('movieQuota')
+    movie_item = xbmcgui.ListItem(label=f'Movie Requests:  {_quota_label(movie_quota)}')
+    movie_item.setArt({'icon': 'DefaultMovies.png'})
+    xbmcplugin.addDirectoryItem(context.addon_handle, '', movie_item, False)
+
+    tv_quota = user.get('tvQuota')
+    tv_item = xbmcgui.ListItem(label=f'Series Requests:  {_quota_label(tv_quota)}')
+    tv_item.setArt({'icon': 'DefaultTVShows.png'})
+    xbmcplugin.addDirectoryItem(context.addon_handle, '', tv_item, False)
+
+    separator = xbmcgui.ListItem(label='[I]Recent Requests[/I]')
+    separator.setArt({'icon': 'DefaultAddonNone.png'})
+    xbmcplugin.addDirectoryItem(context.addon_handle, '', separator, False)
+
+    user_id = user.get('id')
+    if user_id:
+        recent_data = api_client.client.api_request(
+            '/request',
+            params={'take': 10, 'skip': 0, 'sort': 'added', 'filter': 'all', 'requestedBy': user_id}
+        )
+    else:
+        recent_data = api_client.client.api_request(
+            '/request',
+            params={'take': 10, 'skip': 0, 'sort': 'added', 'filter': 'all'}
+        )
+
+    if recent_data:
+        _STATUS_LABELS = {2: '[COLOR yellow]Requested[/COLOR]', 3: '[COLOR cyan]Processing[/COLOR]',
+                          4: '[COLOR lime]Partially Available[/COLOR]', 5: '[COLOR lime]Available[/COLOR]'}
+        for req in recent_data.get('results', []):
+            media = req.get('media', {})
+            media_id = media.get('tmdbId')
+            media_type = media.get('mediaType')
+            media_status = media.get('status', 1)
+            if not media_id or not media_type:
+                continue
+            cache_key = f"details_{media_type}_{media_id}"
+            media_data = cache.get_cached(cache_key)
+            if not media_data:
+                media_data = api_client.client.api_request(f"/{media_type}/{media_id}")
+                if media_data:
+                    cache.set_cached(cache_key, media_data)
+            if not media_data:
+                continue
+            title = media_data.get('title') or media_data.get('name') or 'Unknown'
+            release = media_data.get('releaseDate') or media_data.get('firstAirDate', '')
+            year = release[:4] if release else ''
+            status_str = _STATUS_LABELS.get(media_status, '')
+            label = f'{title}'
+            if year:
+                label += f' ({year})'
+            if status_str:
+                label += f'  {status_str}'
+            list_item = xbmcgui.ListItem(label=label)
+            list_item.setArt(media_utils.make_art(media_data))
+            media_utils.set_info_tag(list_item, media_utils.make_info(media_data, media_type))
+            if media_status == 5 and media_type == 'movie':
+                url = build_url({'mode': 'play_local_file', 'type': media_type, 'id': media_id})
+                list_item.setProperty('IsPlayable', 'true')
+            elif media_status == 5 and media_type == 'tv':
+                url = build_url({'mode': 'tvshow', 'id': media_id})
+            else:
+                url = build_url({'mode': 'show_details', 'type': media_type, 'id': media_id})
+            xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, media_status == 5 and media_type == 'tv')
+
+    xbmcplugin.endOfDirectory(context.addon_handle)
+
+
 def report_issue(media_type, media_id):
     issue_types = ['Video Issue', 'Audio Issue', 'Subtitles Issue', 'Other']
     selected = xbmcgui.Dialog().select('Select Issue Type', issue_types)

@@ -36,6 +36,8 @@ elif mode == "clear_cache":
     actions.clear_cache()
 elif mode == "statistics":
     requests_view.show_statistics()
+elif mode == "profile":
+    actions.show_profile()
 elif mode == "favorites":
     actions.list_favorites()
 elif mode == "add_favorite":
