@@ -1,4 +1,5 @@
 ﻿import sys
+import xbmc
 import xbmcgui
 import xbmcplugin
 import context
@@ -127,3 +128,22 @@ elif mode == "upcoming_tv":
     else:
         xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch upcoming TV shows", xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "top_rated_movies":
+    browse.list_top_rated('movie')
+elif mode == "top_rated_tv":
+    browse.list_top_rated('tv')
+elif mode == "networks":
+    browse.list_networks()
+elif mode == "network" and context.args.get('network_id'):
+    browse.list_network_shows(int(context.args.get('network_id')))
+elif mode == "search_history":
+    browse.list_search_history()
+elif mode == "clear_search_history":
+    import storage
+    storage.clear_search_history()
+    xbmcgui.Dialog().notification("KodiSeerr", "Search history cleared", xbmcgui.NOTIFICATION_INFO)
+    xbmc.executebuiltin("Container.Refresh")
+elif mode == "person_credits" and context.args.get('id'):
+    actions.show_person_credits(context.args.get('id'))
+elif mode == "retry_request" and context.args.get('request_id'):
+    requests_view.retry_request(context.args.get('request_id'))

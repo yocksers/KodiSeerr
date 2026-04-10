@@ -24,7 +24,6 @@ def export_settings():
             'remember_last_quality': addon.getSettingBool('remember_last_quality'),
             'enable_season_selection': addon.getSettingBool('enable_season_selection'),
             'confirm_before_request': addon.getSettingBool('confirm_before_request'),
-            'show_request_status': addon.getSettingBool('show_request_status'),
             'enable_request_notifications': addon.getSettingBool('enable_request_notifications'),
             'polling_interval': addon.getSettingInt('polling_interval'),
             'notify_processing': addon.getSettingBool('notify_processing'),

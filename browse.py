@@ -7,32 +7,48 @@ import api_client
 import cache
 import context
 import media_utils
+import storage
 from utils import build_url
+
+_NETWORKS = [
+    (213,  'Netflix',            'DefaultMovies.png'),
+    (1024, 'Amazon Prime Video', 'DefaultMovies.png'),
+    (2739, 'Disney+',            'DefaultMovies.png'),
+    (49,   'HBO / Max',          'DefaultMovies.png'),
+    (2552, 'Apple TV+',          'DefaultMovies.png'),
+    (453,  'Hulu',               'DefaultMovies.png'),
+    (2076, 'BBC One',            'DefaultTVShows.png'),
+    (67,   'Showtime',           'DefaultMovies.png'),
+]
 
 
 def list_main_menu():
     xbmcplugin.setContent(context.addon_handle, 'files')
     items = [
-        ('search', 'Search', 'DefaultAddonsSearch.png', True),
+        ('search',          'Search',                    'DefaultAddonsSearch.png',          True),
+        ('search_history',  'Search History',            'DefaultAddonsSearch.png',          True),
         (None, None, None, False),
-        ('trending', 'Trending', 'DefaultMovies.png', True),
-        ('popular_movies', 'Popular Movies', 'DefaultMovies.png', True),
-        ('popular_tv', 'Popular TV Shows', 'DefaultTVShows.png', True),
-        ('upcoming_movies', 'Upcoming Movies', 'DefaultMovies.png', True),
-        ('upcoming_tv', 'Upcoming TV Shows', 'DefaultTVShows.png', True),
+        ('trending',        'Trending',                  'DefaultMovies.png',                True),
+        ('popular_movies',  'Popular Movies',            'DefaultMovies.png',                True),
+        ('popular_tv',      'Popular TV Shows',          'DefaultTVShows.png',               True),
+        ('top_rated_movies','Top Rated Movies',          'DefaultMovies.png',                True),
+        ('top_rated_tv',    'Top Rated TV Shows',        'DefaultTVShows.png',               True),
+        ('upcoming_movies', 'Upcoming Movies',           'DefaultMovies.png',                True),
+        ('upcoming_tv',     'Upcoming TV Shows',         'DefaultTVShows.png',               True),
         (None, None, None, False),
-        ('genres_movie', 'Movies by Genre', 'DefaultGenre.png', True),
-        ('genres_tv', 'TV Shows by Genre', 'DefaultGenre.png', True),
+        ('genres_movie',    'Movies by Genre',           'DefaultGenre.png',                 True),
+        ('genres_tv',       'TV Shows by Genre',         'DefaultGenre.png',                 True),
+        ('networks',        'TV by Network / Service',   'DefaultMovies.png',                True),
         (None, None, None, False),
-        ('recently_added', 'Recently Added', 'DefaultRecentlyAddedMovies.png', True),
-        ('collections', 'Collections', 'DefaultSets.png', True),
+        ('recently_added',  'Recently Added',            'DefaultRecentlyAddedMovies.png',   True),
+        ('collections',     'Collections',               'DefaultSets.png',                  True),
         (None, None, None, False),
-        ('favorites', 'My Favorites', 'DefaultFavourites.png', True),
-        ('profile', 'My Profile', 'DefaultActor.png', True),
-        ('requests', 'Request Progress', 'DefaultInProgressShows.png', True),
-        ('statistics', 'Statistics', 'DefaultAddonInfoProvider.png', False),
+        ('favorites',       'My Favorites',              'DefaultFavourites.png',            True),
+        ('profile',         'My Profile',                'DefaultActor.png',                 True),
+        ('requests',        'Request Progress',          'DefaultInProgressShows.png',       True),
+        ('statistics',      'Statistics',                'DefaultAddonInfoProvider.png',     False),
         (None, None, None, False),
-        ('test_connection', 'Test Connection', 'DefaultAddonService.png', False),
+        ('test_connection', 'Test Connection',           'DefaultAddonService.png',          False),
     ]
     for item in items:
         if item[0] is None:
@@ -47,6 +63,76 @@ def list_main_menu():
         else:
             url = build_url({'mode': mode})
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
+    xbmcplugin.endOfDirectory(context.addon_handle)
+
+
+def list_top_rated(media_type):
+    xbmcplugin.setContent(context.addon_handle, 'movies' if media_type == 'movie' else 'tvshows')
+    page = context.args.get('page', 1)
+    try:
+        page = int(page)
+    except Exception:
+        page = 1
+    endpoint = '/discover/movies' if media_type == 'movie' else '/discover/tv'
+    cache_key = f"top_rated_{media_type}_{page}"
+    data = cache.get_cached(cache_key)
+    if not data:
+        data = api_client.client.api_request(endpoint, params={'sortBy': 'voteAverage.desc', 'page': page})
+        if data:
+            cache.set_cached(cache_key, data)
+    if data:
+        mode = f'top_rated_{"movies" if media_type == "movie" else "tv"}'
+        list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch top rated", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+
+
+def list_networks():
+    xbmcplugin.setContent(context.addon_handle, 'files')
+    for network_id, name, icon in _NETWORKS:
+        url = build_url({'mode': 'network', 'network_id': network_id})
+        list_item = xbmcgui.ListItem(label=name)
+        list_item.setArt({'icon': icon, 'thumb': icon})
+        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, True)
+    xbmcplugin.endOfDirectory(context.addon_handle)
+
+
+def list_network_shows(network_id):
+    xbmcplugin.setContent(context.addon_handle, 'tvshows')
+    page = context.args.get('page', 1)
+    try:
+        page = int(page)
+    except Exception:
+        page = 1
+    cache_key = f"network_{network_id}_{page}"
+    data = cache.get_cached(cache_key)
+    if not data:
+        data = api_client.client.api_request(f"/discover/tv/network/{network_id}", params={'page': page})
+        if data:
+            cache.set_cached(cache_key, data)
+    if data:
+        list_items(data, 'network', display_type='tv', genre_id=network_id)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch network shows", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+
+
+def list_search_history():
+    xbmcplugin.setContent(context.addon_handle, 'files')
+    history = storage.load_search_history()
+    new_item = xbmcgui.ListItem(label='[B]New Search...[/B]')
+    new_item.setArt({'icon': 'DefaultAddonsSearch.png'})
+    xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': 'search'}), new_item, False)
+    if history:
+        clear_item = xbmcgui.ListItem(label='[I]Clear History[/I]')
+        clear_item.setArt({'icon': 'DefaultAddonNone.png'})
+        xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': 'clear_search_history'}), clear_item, False)
+        for query in history:
+            list_item = xbmcgui.ListItem(label=query)
+            list_item.setArt({'icon': 'DefaultAddonsSearch.png'})
+            url = build_url({'mode': 'search', 'query': query})
+            xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
     xbmcplugin.endOfDirectory(context.addon_handle)
 
 
@@ -116,28 +202,12 @@ def show_collection_details(collection_id):
             cache.set_cached(cache_key, data)
     if data:
         parts = data.get('parts', [])
-        show_request_status = context.addon.getSettingBool('show_request_status')
-        statuses = {}
-        if show_request_status and parts:
-            api_client.client.login()
-            with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(parts))) as executor:
-                future_to_id = {
-                    executor.submit(media_utils.get_media_status, 'movie', item.get('id'), item): item.get('id')
-                    for item in parts
-                }
-                for future, key_id in future_to_id.items():
-                    statuses[key_id] = future.result()
         for item in parts:
             media_type = 'movie'
             title = item.get('title') or item.get('name')
             release_date = item.get('releaseDate')
             year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
             label = f"{title} ({year})" if year else title
-            if show_request_status:
-                status = statuses.get(item.get('id'), 0)
-                status_label = media_utils.get_status_label(status)
-                if status_label:
-                    label += f" {status_label}"
             item_id = item.get('id')
             ctx_menu = [
                 ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
@@ -192,27 +262,12 @@ def list_items(data, mode, display_type=None, genre_id=None):
             prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
             xbmcplugin.addDirectoryItem(context.addon_handle, build_url(prev_params), prev_item, True)
 
-    show_status = context.addon.getSettingBool('show_request_status')
-    statuses = {}
-    if show_status and items:
-        api_client.client.login()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(items))) as executor:
-            future_to_key = {
-                executor.submit(media_utils.get_media_status, item.get('mediaType'), item.get('id'), item): (item.get('mediaType'), item.get('id'))
-                for item in items
-            }
-            for future, key in future_to_key.items():
-                statuses[key] = future.result()
     for item in items:
         media_type = item.get('mediaType')
         title = item.get('title') or item.get('name')
         release_date = item.get('releaseDate') or item.get('firstAirDate')
         year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
         label = f"{title} ({year})" if year else title
-        if show_status:
-            status_label = media_utils.get_status_label(statuses.get((media_type, item.get('id')), 0))
-            if status_label:
-                label += f" {status_label}"
         item_id = item.get('id')
         ctx_menu = [
             ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
@@ -386,35 +441,34 @@ def search():
     if not search_string:
         xbmcplugin.endOfDirectory(context.addon_handle)
         return
-    cache_key = f"search_{search_string}"
+    storage.save_to_search_history(search_string)
+    api_query = search_string.replace(' ', '_')
+    cache_key = f"search_{api_query}"
     data = cache.get_cached(cache_key)
     if not data:
-        data = api_client.client.api_request('/search', params={'query': search_string})
+        data = api_client.client.api_request('/search', params={'query': api_query})
         if data:
             cache.set_cached(cache_key, data)
     results = data.get('results', []) if data else []
-    show_status = context.addon.getSettingBool('show_request_status')
-    statuses = {}
-    if show_status and results:
-        api_client.client.login()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(results))) as executor:
-            future_to_key = {
-                executor.submit(media_utils.get_media_status, item.get('mediaType', 'movie'), item.get('id'), item): (item.get('mediaType', 'movie'), item.get('id'))
-                for item in results
-            }
-            for future, key in future_to_key.items():
-                statuses[key] = future.result()
-    for item in results:
+    media_results = [r for r in results if r.get('mediaType') in ('movie', 'tv')]
+    person_results = [r for r in results if r.get('mediaType') == 'person']
+    for item in person_results:
+        person_id = item.get('id')
+        name = item.get('name') or 'Unknown Person'
+        known_for = item.get('knownForDepartment', '')
+        label = f"{name} (Person)" if not known_for else f"{name} ({known_for})"
+        list_item = xbmcgui.ListItem(label=label)
+        if item.get('profilePath'):
+            list_item.setArt({'thumb': context.image_base + item['profilePath']})
+        url = build_url({'mode': 'person_credits', 'id': person_id})
+        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, True)
+    for item in media_results:
         media_type = item.get('mediaType', 'movie')
         title = item.get('title') or item.get('name')
         release_date = item.get('releaseDate') or item.get('firstAirDate')
         year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
         type_label = "(Movie)" if media_type == "movie" else "(TV Show)"
         full_title = f"{title} ({year}) {type_label}" if year else f"{title} {type_label}"
-        if show_status:
-            status_label = media_utils.get_status_label(statuses.get((media_type, item.get('id')), 0))
-            if status_label:
-                full_title += f" {status_label}"
         item_id = item.get('id')
         ctx_menu = [
             ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),

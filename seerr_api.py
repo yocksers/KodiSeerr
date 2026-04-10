@@ -41,13 +41,14 @@ class SeerrClient:
             self.logged_in = True
             return True
 
-        login_url = f"{self.base_url}/api/v1/auth/jellyfin"
+        if self.auth_method == "local":
+            login_url = f"{self.base_url}/api/v1/auth/local"
+            payload = {"email": self.username, "password": self.password}
+        else:
+            login_url = f"{self.base_url}/api/v1/auth/jellyfin"
+            payload = {"username": self.username, "password": self.password}
         try:
-            resp = self.session.post(
-                login_url,
-                json={"username": self.username, "password": self.password},
-                timeout=15
-            )
+            resp = self.session.post(login_url, json=payload, timeout=15)
             resp.raise_for_status()
             xbmc.log(f"[kodiseerr] Login successful", xbmc.LOGDEBUG)
             self.logged_in = True

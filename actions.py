@@ -1,6 +1,7 @@
 import xbmc
 import xbmcgui
 import xbmcplugin
+import concurrent.futures
 import api_client
 import cache
 import context
@@ -61,7 +62,22 @@ def add_to_favorites(media_type, media_id):
     if fav_key in favorites:
         xbmcgui.Dialog().notification('KodiSeerr', 'Already in favorites', xbmcgui.NOTIFICATION_INFO)
     else:
-        favorites.add(fav_key)
+        cache_key = f"details_{media_type}_{media_id}"
+        data = cache.get_cached(cache_key)
+        if not data:
+            data = api_client.client.api_request(f"/{media_type}/{media_id}")
+            if data:
+                cache.set_cached(cache_key, data)
+        meta = {}
+        if data:
+            release = data.get('releaseDate') or data.get('firstAirDate') or ''
+            meta = {
+                'title': data.get('title') or data.get('name', ''),
+                'poster': data.get('posterPath', ''),
+                'year': release[:4],
+                'mediatype': media_type,
+            }
+        favorites[fav_key] = meta
         storage.save_favorites(favorites)
         xbmcgui.Dialog().notification('KodiSeerr', 'Added to favorites', xbmcgui.NOTIFICATION_INFO)
 
@@ -70,7 +86,7 @@ def remove_from_favorites(media_type, media_id):
     favorites = storage.load_favorites()
     fav_key = f"{media_type}_{media_id}"
     if fav_key in favorites:
-        favorites.remove(fav_key)
+        del favorites[fav_key]
         storage.save_favorites(favorites)
         xbmcgui.Dialog().notification('KodiSeerr', 'Removed from favorites', xbmcgui.NOTIFICATION_INFO)
         xbmc.executebuiltin('Container.Refresh')
@@ -83,20 +99,29 @@ def list_favorites():
         info_item = xbmcgui.ListItem(label='[I]No favorites yet[/I]')
         xbmcplugin.addDirectoryItem(context.addon_handle, '', info_item, False)
     else:
-        for fav in favorites:
-            parts = fav.split('_', 1)
+        for fav_key, meta in favorites.items():
+            parts = fav_key.split('_', 1)
             if len(parts) < 2:
                 continue
             media_type, media_id = parts
-            cache_key = f"details_{media_type}_{media_id}"
-            data = cache.get_cached(cache_key)
-            if not data:
-                data = api_client.client.api_request(f"/{media_type}/{media_id}")
-                if data:
-                    cache.set_cached(cache_key, data)
-            if not data:
-                continue
-            label = data.get('title') or data.get('name', 'Unknown')
+            label = meta.get('title', '')
+            year = meta.get('year', '')
+            art_data = None
+            if not label:
+                cache_key = f"details_{media_type}_{media_id}"
+                data = cache.get_cached(cache_key)
+                if not data:
+                    data = api_client.client.api_request(f"/{media_type}/{media_id}")
+                    if data:
+                        cache.set_cached(cache_key, data)
+                if not data:
+                    continue
+                label = data.get('title') or data.get('name', 'Unknown')
+                release = data.get('releaseDate') or data.get('firstAirDate') or ''
+                year = release[:4]
+                art_data = data
+            if year:
+                label = f"{label} ({year})"
             ctx_menu = [
                 ('Remove from Favorites', f'RunPlugin({build_url({"mode": "remove_favorite", "type": media_type, "id": media_id})})'),
                 ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": media_id})})'),
@@ -104,8 +129,14 @@ def list_favorites():
             url = build_url({'mode': 'request', 'type': media_type, 'id': media_id})
             list_item = xbmcgui.ListItem(label=label)
             list_item.addContextMenuItems(ctx_menu)
-            media_utils.set_info_tag(list_item, media_utils.make_info(data, media_type))
-            list_item.setArt(media_utils.make_art(data))
+            if art_data:
+                media_utils.set_info_tag(list_item, media_utils.make_info(art_data, media_type))
+                list_item.setArt(media_utils.make_art(art_data))
+            elif meta.get('poster'):
+                list_item.setArt({
+                    'poster': context.image_base + meta['poster'],
+                    'thumb': context.image_base + meta['poster'],
+                })
             xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
     xbmcplugin.endOfDirectory(context.addon_handle)
 
@@ -207,6 +238,50 @@ def show_profile():
                 url = build_url({'mode': 'show_details', 'type': media_type, 'id': media_id})
             xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, media_status == 5 and media_type == 'tv')
 
+    xbmcplugin.endOfDirectory(context.addon_handle)
+
+
+def show_person_credits(person_id):
+    xbmcplugin.setContent(context.addon_handle, 'videos')
+    cache_key = f"person_credits_{person_id}"
+    data = cache.get_cached(cache_key)
+    if not data:
+        data = api_client.client.api_request(f"/person/{person_id}/combined_credits")
+        if data:
+            cache.set_cached(cache_key, data)
+    if not data:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch person credits", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+        return
+    seen_ids = set()
+    items = []
+    for item in data.get('cast', []):
+        media_type = item.get('mediaType')
+        item_id = item.get('id')
+        if media_type not in ('movie', 'tv') or not item_id or item_id in seen_ids:
+            continue
+        seen_ids.add(item_id)
+        items.append(item)
+    for item in items:
+        media_type = item.get('mediaType')
+        title = item.get('title') or item.get('name')
+        release_date = item.get('releaseDate') or item.get('firstAirDate')
+        year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
+        label = f"{title} ({year})" if year else title
+        item_id = item.get('id')
+        ctx_menu = [
+            ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
+            ('Add to Favorites', f'RunPlugin({build_url({"mode": "add_favorite", "type": media_type, "id": item_id})})'),
+        ]
+        url = build_url({'mode': 'request', 'type': media_type, 'id': item_id})
+        list_item = xbmcgui.ListItem(label=label)
+        list_item.addContextMenuItems(ctx_menu)
+        media_utils.set_info_tag(list_item, media_utils.make_info(item, media_type))
+        list_item.setArt(media_utils.make_art(item))
+        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
+    xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
+    xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_LABEL)
+    xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_VIDEO_YEAR)
     xbmcplugin.endOfDirectory(context.addon_handle)
 
 

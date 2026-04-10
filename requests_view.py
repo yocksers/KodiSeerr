@@ -242,11 +242,21 @@ def cancel_request(request_id):
             xbmcgui.Dialog().notification('KodiSeerr', f'Failed to cancel: {str(e)}', xbmcgui.NOTIFICATION_ERROR)
 
 
+def retry_request(request_id):
+    result = api_client.client.api_request(f"/request/{request_id}/retry", method="POST")
+    if result is not None:
+        xbmcgui.Dialog().notification('KodiSeerr', 'Request retry queued', xbmcgui.NOTIFICATION_INFO)
+    else:
+        xbmcgui.Dialog().notification('KodiSeerr', 'Failed to retry request', xbmcgui.NOTIFICATION_ERROR)
+    xbmc.executebuiltin('Container.Refresh')
+
+
 def show_requests(data, mode, current_page):
     xbmcplugin.setContent(context.addon_handle, 'videos')
     items = data.get('results', [])
     page_info = data.get('pageInfo', {})
     total_pages = page_info.get('pages', 1)
+    is_admin = has_manage_requests_permission()
 
     page_info_item = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
     page_info_item.setArt({'icon': 'DefaultAddonNone.png'})
@@ -287,6 +297,8 @@ def show_requests(data, mode, current_page):
         ctx_menu = []
         if media_status in [2, 3]:
             ctx_menu.append(('Cancel Request', f'RunPlugin({build_url({"mode": "cancel_request", "request_id": request_id})})'))
+        if media_status == 3 and is_admin:
+            ctx_menu.append(('Retry Request', f'RunPlugin({build_url({"mode": "retry_request", "request_id": request_id})})'))
         ctx_menu.append(('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": media_id})})'))
         if media_status == 5 and media_type == "movie":
             url = build_url({'mode': 'play_local_file', 'type': media_type, 'id': media_id})

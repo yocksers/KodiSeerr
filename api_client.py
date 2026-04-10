@@ -15,19 +15,25 @@ def get_client():
         return _client_instance
 
     addon = xbmcaddon.Addon()
+    if addon.getSettingBool("use_api_token"):
+        _auth_method = "api_token"
+    elif addon.getSettingBool("use_local_auth"):
+        _auth_method = "local"
+    else:
+        _auth_method = "jellyfin"
     current_settings = (
         addon.getSetting("seerr_url").rstrip("/"),
         addon.getSetting("seerr_username"),
         addon.getSetting("seerr_password"),
         addon.getSetting("seerr_api_token"),
-        "api_token" if addon.getSettingBool("use_api_token") else "password",
+        _auth_method,
         addon.getSettingBool("allow_self_signed")
     )
     
     if _client_instance is None or _cached_settings != current_settings:
         if _client_instance is not None:
             _client_instance.close()
-        url, username, password, api_token, auth_method, _ = current_settings
+        url, username, password, api_token, auth_method, _allow_self_signed = current_settings
         _client_instance = SeerrClient(url, username, password, api_token, auth_method)
         _cached_settings = current_settings
 
