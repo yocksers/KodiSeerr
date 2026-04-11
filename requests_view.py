@@ -138,6 +138,41 @@ def do_request(media_type, media_id):
         if not xbmcgui.Dialog().yesno('KodiSeerr', 'This content is already requested. Request again?'):
             return
 
+    request_collection = False
+    collection_movie_ids = []
+    collection_name = None
+
+    if media_type == "movie":
+        movie_cache_key = f"details_movie_{media_id}"
+        movie_data = cache.get_cached(movie_cache_key)
+        if not movie_data:
+            movie_data = api_client.client.api_request(f"/movie/{media_id}")
+            if movie_data:
+                cache.set_cached(movie_cache_key, movie_data)
+        if movie_data and movie_data.get('collection'):
+            coll = movie_data['collection']
+            coll_id = coll.get('id')
+            collection_name = coll.get('name', 'this collection')
+            movie_title = movie_data.get('title', 'This movie')
+            choice = xbmcgui.Dialog().select(
+                'KodiSeerr',
+                [f'{movie_title} only', f'Entire collection: {collection_name}']
+            )
+            if choice < 0:
+                return
+            if choice == 1:
+                coll_cache_key = f"collection_{coll_id}"
+                coll_data = cache.get_cached(coll_cache_key)
+                if not coll_data:
+                    coll_data = api_client.client.api_request(f"/collection/{coll_id}")
+                    if coll_data:
+                        cache.set_cached(coll_cache_key, coll_data)
+                if not coll_data:
+                    xbmcgui.Dialog().notification('KodiSeerr', 'Failed to fetch collection', xbmcgui.NOTIFICATION_ERROR)
+                    return
+                collection_movie_ids = [p['id'] for p in coll_data.get('parts', []) if p.get('id')]
+                request_collection = True
+
     seasons_to_request = []
     if media_type == "tv":
         tv_cache_key = f"details_tv_{media_id}"
@@ -200,35 +235,60 @@ def do_request(media_type, media_id):
                 quality_profile = profiles[selected][0]
 
     if context.addon.getSettingBool('confirm_before_request'):
-        title_data_key = f"details_{media_type}_{media_id}"
-        title_data = cache.get_cached(title_data_key)
-        if not title_data:
-            title_data = api_client.client.api_request(f"/{media_type}/{media_id}")
-            if title_data:
-                cache.set_cached(title_data_key, title_data)
-        title = title_data.get('title') or title_data.get('name', 'this content') if title_data else 'this content'
-        msg = f"Request {title}" + (" in 4K" if is4k else "") + "?"
+        if request_collection:
+            msg = f"Request entire collection: {collection_name}" + (" in 4K" if is4k else "") + "?"
+        else:
+            title_data_key = f"details_{media_type}_{media_id}"
+            title_data = cache.get_cached(title_data_key)
+            if not title_data:
+                title_data = api_client.client.api_request(f"/{media_type}/{media_id}")
+                if title_data:
+                    cache.set_cached(title_data_key, title_data)
+            title = title_data.get('title') or title_data.get('name', 'this content') if title_data else 'this content'
+            msg = f"Request {title}" + (" in 4K" if is4k else "") + "?"
         if not xbmcgui.Dialog().yesno('KodiSeerr', msg):
             return
 
-    payload = {"mediaType": media_type, "mediaId": int(media_id), "is4k": is4k}
-    if media_type == "tv":
-        payload["seasons"] = seasons_to_request
-    if server_id is not None:
-        payload["serverId"] = server_id
-    if quality_profile:
-        payload["profileId"] = quality_profile
-    if root_folder:
-        payload["rootFolder"] = root_folder
-    if tags:
-        payload["tags"] = tags
-
-    try:
-        api_client.client.api_request("/request", method="POST", data=payload)
-        xbmcgui.Dialog().notification('KodiSeerr', 'Request Sent!', xbmcgui.NOTIFICATION_INFO, 3000)
-        cache.remove(f"status_{media_type}_{media_id}")
-    except Exception as e:
-        xbmcgui.Dialog().notification('KodiSeerr', f'Request Failed: {str(e)}', xbmcgui.NOTIFICATION_ERROR, 4000)
+    if request_collection:
+        ids_to_request = [mid for mid in collection_movie_ids if media_utils.get_media_status('movie', mid) < 2]
+        if not ids_to_request:
+            xbmcgui.Dialog().notification('KodiSeerr', 'All movies in this collection are already requested or available', xbmcgui.NOTIFICATION_INFO, 4000)
+            xbmc.executebuiltin("Action(Back)")
+            return
+        success_count = 0
+        for mid in ids_to_request:
+            payload = {"mediaType": "movie", "mediaId": int(mid), "is4k": is4k}
+            if server_id is not None:
+                payload["serverId"] = server_id
+            if quality_profile:
+                payload["profileId"] = quality_profile
+            if root_folder:
+                payload["rootFolder"] = root_folder
+            if tags:
+                payload["tags"] = tags
+            result = api_client.client.api_request("/request", method="POST", data=payload)
+            if result is not None:
+                success_count += 1
+                cache.remove(f"status_movie_{mid}")
+        xbmcgui.Dialog().notification('KodiSeerr', f'{success_count} of {len(ids_to_request)} request(s) sent!', xbmcgui.NOTIFICATION_INFO, 3000)
+    else:
+        payload = {"mediaType": media_type, "mediaId": int(media_id), "is4k": is4k}
+        if media_type == "tv":
+            payload["seasons"] = seasons_to_request
+        if server_id is not None:
+            payload["serverId"] = server_id
+        if quality_profile:
+            payload["profileId"] = quality_profile
+        if root_folder:
+            payload["rootFolder"] = root_folder
+        if tags:
+            payload["tags"] = tags
+        try:
+            api_client.client.api_request("/request", method="POST", data=payload)
+            xbmcgui.Dialog().notification('KodiSeerr', 'Request Sent!', xbmcgui.NOTIFICATION_INFO, 3000)
+            cache.remove(f"status_{media_type}_{media_id}")
+        except Exception as e:
+            xbmcgui.Dialog().notification('KodiSeerr', f'Request Failed: {str(e)}', xbmcgui.NOTIFICATION_ERROR, 4000)
     xbmc.executebuiltin("Action(Back)")
 
 
