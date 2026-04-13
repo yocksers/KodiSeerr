@@ -27,6 +27,7 @@
         <setting id="notify_declined" type="bool" label="Notify when request declined" default="true" />
     </category>
     <category label="Display">
+        <setting id="show_request_status" type="bool" label="Show availability status in lists" default="true" />
         <setting id="items_per_page" type="number" label="Items per page" default="20" />
         <setting id="show_year_in_title" type="bool" label="Show year in title" default="true" />
         <setting id="show_media_type_badge" type="bool" label="Show media type badge" default="true" />

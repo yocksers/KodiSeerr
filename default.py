@@ -11,6 +11,7 @@ import api_client
 import play_local_file
 
 context.init(sys.argv)
+cache.load_cache()
 
 mode = context.args.get('mode')
 page = context.args.get('page', 1)
@@ -52,7 +53,12 @@ elif mode == "report_issue":
 elif mode == "cancel_request":
     requests_view.cancel_request(context.args.get('request_id'))
 elif mode == "play_local_file":
-    play_local_file.play_local_file(context.args.get('type'), context.args.get('id'))
+    play_local_file.play_local_file(
+        context.args.get('type'),
+        context.args.get('id'),
+        context.args.get('season'),
+        context.args.get('episode'),
+    )
 elif mode == "jump_to_page":
     browse.jump_to_page()
 elif mode == "collections":

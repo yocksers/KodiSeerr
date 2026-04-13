@@ -1,6 +1,7 @@
 import requests
 import xbmcaddon
 import xbmc
+import json
 
 class SeerrClient:
     def __init__(self, base_url, username, password, api_token=None, auth_method="password"):
@@ -25,6 +26,28 @@ class SeerrClient:
                 pass
         else:
             self.session.verify = True
+        if self.auth_method != "api_token":
+            self._load_cookies()
+
+    def _load_cookies(self):
+        try:
+            import cache
+            raw = cache.get_cached("seerr_session_cookies")
+            if raw:
+                cookie_dict = json.loads(raw)
+                self.session.cookies.update(requests.utils.cookiejar_from_dict(cookie_dict))
+                self.logged_in = True
+        except Exception:
+            pass
+
+    def _save_cookies(self):
+        try:
+            import cache
+            cache.set_cached("seerr_session_cookies", json.dumps(
+                requests.utils.dict_from_cookiejar(self.session.cookies)
+            ))
+        except Exception:
+            pass
 
     def close(self):
         self.session.close()
@@ -52,6 +75,7 @@ class SeerrClient:
             resp.raise_for_status()
             xbmc.log(f"[kodiseerr] Login successful", xbmc.LOGDEBUG)
             self.logged_in = True
+            self._save_cookies()
             return True
         except requests.HTTPError as e:
             xbmc.log(f"[kodiseerr] Login failed: {e.response.status_code} {e.response.reason}", xbmc.LOGERROR)
@@ -72,7 +96,13 @@ class SeerrClient:
             if resp.status_code == 401 and self.logged_in:
                 xbmc.log(f"[kodiseerr] Got 401, retrying login", xbmc.LOGDEBUG)
                 self.logged_in = False
+                self.session.cookies.clear()
                 self.session.headers.pop("X-Api-Key", None)
+                try:
+                    import cache
+                    cache.remove("seerr_session_cookies")
+                except Exception:
+                    pass
                 if self.login():
                     resp = self.session.request(method, url, json=data, params=params, timeout=15)
                 else:

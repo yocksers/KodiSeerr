@@ -120,10 +120,13 @@ def prompt_advanced_options(media_type, is4k=False):
 
 def get_quality_profiles():
     try:
-        data = api_client.client.api_request('/settings/radarr')
-        if data and isinstance(data, list) and len(data) > 0:
-            profiles = data[0].get('profiles', [])
-            return [(p['id'], p['name']) for p in profiles]
+        servers = api_client.client.api_request('/settings/radarr')
+        if not servers or not isinstance(servers, list):
+            return []
+        server = next((s for s in servers if s.get('isDefault')), servers[0])
+        server_id = server.get('id')
+        profiles = api_client.client.api_request(f'/settings/radarr/{server_id}/profiles') or []
+        return [(p['id'], p['name']) for p in profiles]
     except Exception as e:
         xbmc.log(f"[KodiSeerr] Quality profiles error: {e}", xbmc.LOGERROR)
     return []

@@ -78,7 +78,7 @@ def main_loop():
 
                     if request_status == 3 and request_id and request_id not in notified_declined:
                         if addon.getSettingBool('notify_declined'):
-                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} request was declined', xbmcgui.NOTIFICATION_WARNING, 5000, poster)
+                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} request was declined', xbmcgui.NOTIFICATION_WARNING, 5000)
                         notified_declined.append(request_id)
 
                     if media_id:
@@ -86,13 +86,13 @@ def main_loop():
                         previous_status = previous_data.get('status', 0)
 
                         if media_status == 5 and previous_status != 5:
-                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now available!', xbmcgui.NOTIFICATION_INFO, 5000, poster)
+                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now available!', xbmcgui.NOTIFICATION_INFO, 5000)
                             notified_media[media_id] = {'status': 5, 'title': title}
                         elif media_status == 3 and previous_status != 3 and addon.getSettingBool('notify_processing'):
-                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now processing', xbmcgui.NOTIFICATION_INFO, 4000, poster)
+                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} is now processing', xbmcgui.NOTIFICATION_INFO, 4000)
                             notified_media[media_id] = {'status': 3, 'title': title}
                         elif media_status == 2 and previous_status != 2 and addon.getSettingBool('notify_approved'):
-                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} request approved', xbmcgui.NOTIFICATION_INFO, 4000, poster)
+                            xbmcgui.Dialog().notification('KodiSeerr', f'{title} request approved', xbmcgui.NOTIFICATION_INFO, 4000)
                             notified_media[media_id] = {'status': 2, 'title': title}
                         elif media_status != previous_status and media_id not in notified_media:
                             notified_media[media_id] = {'status': media_status, 'title': title}

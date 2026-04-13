@@ -8,7 +8,7 @@ import cache
 import context
 import media_utils
 import storage
-from utils import build_url
+from utils import build_url, add_next_page_button
 
 _NETWORKS = [
     (213,  'Netflix',            'DefaultMovies.png'),
@@ -209,6 +209,8 @@ def show_collection_details(collection_id):
             year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
             label = f"{title} ({year})" if year else title
             item_id = item.get('id')
+            status = media_utils.get_media_status(media_type, item_id, item)
+            status_label = media_utils.get_status_label(status)
             ctx_menu = [
                 ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
                 ('Add to Favorites', f'RunPlugin({build_url({"mode": "add_favorite", "type": media_type, "id": item_id})})'),
@@ -216,7 +218,10 @@ def show_collection_details(collection_id):
             url = build_url({'mode': 'request', 'type': media_type, 'id': item_id})
             list_item = xbmcgui.ListItem(label=label)
             list_item.addContextMenuItems(ctx_menu)
-            media_utils.set_info_tag(list_item, media_utils.make_info(item, media_type))
+            info = media_utils.make_info(item, media_type)
+            if status_label:
+                info['plot'] = f"{status_label}\n{info['plot']}" if info.get('plot') else status_label
+            media_utils.set_info_tag(list_item, info)
             list_item.setArt(media_utils.make_art(item))
             xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
     xbmcplugin.endOfDirectory(context.addon_handle)
@@ -269,6 +274,8 @@ def list_items(data, mode, display_type=None, genre_id=None):
         year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
         label = f"{title} ({year})" if year else title
         item_id = item.get('id')
+        status = media_utils.get_media_status(media_type, item_id, item)
+        status_label = media_utils.get_status_label(status)
         ctx_menu = [
             ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
             ('Add to Favorites', f'RunPlugin({build_url({"mode": "add_favorite", "type": media_type, "id": item_id})})'),
@@ -276,18 +283,19 @@ def list_items(data, mode, display_type=None, genre_id=None):
         url = build_url({'mode': 'request', 'type': media_type, 'id': item_id})
         list_item = xbmcgui.ListItem(label=label)
         list_item.addContextMenuItems(ctx_menu)
-        media_utils.set_info_tag(list_item, media_utils.make_info(item, media_type))
+        info = media_utils.make_info(item, media_type)
+        if status_label:
+            info['plot'] = f"{status_label}\n{info['plot']}" if info.get('plot') else status_label
+        media_utils.set_info_tag(list_item, info)
         list_item.setArt(media_utils.make_art(item))
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
 
-    if not (is_widget and hide_pagination) and current_page < total_pages:
-        next_params = {'mode': mode, 'page': current_page + 1}
+    if not (is_widget and hide_pagination):
+        next_params = {'mode': mode}
         if mode == "genre":
             next_params['genre_id'] = genre_id
             next_params['display_type'] = display_type
-        next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
-        next_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
-        xbmcplugin.addDirectoryItem(context.addon_handle, build_url(next_params), next_item, True)
+        add_next_page_button(next_params, current_page, total_pages)
 
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_LABEL)
@@ -367,6 +375,8 @@ def list_recently_added():
         year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
         label = f"{title} ({year})" if year else title
         item_id = item.get('id')
+        status = media_utils.get_media_status(media_type, item_id, item)
+        status_label = media_utils.get_status_label(status)
         ctx_menu = [
             ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
             ('Add to Favorites', f'RunPlugin({build_url({"mode": "add_favorite", "type": media_type, "id": item_id})})'),
@@ -374,7 +384,10 @@ def list_recently_added():
         url = build_url({'mode': 'request', 'type': media_type, 'id': item_id})
         list_item = xbmcgui.ListItem(label=label)
         list_item.addContextMenuItems(ctx_menu)
-        media_utils.set_info_tag(list_item, media_utils.make_info(item, media_type))
+        info = media_utils.make_info(item, media_type)
+        if status_label:
+            info['plot'] = f"{status_label}\n{info['plot']}" if info.get('plot') else status_label
+        media_utils.set_info_tag(list_item, info)
         list_item.setArt(media_utils.make_art(item))
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
     xbmcplugin.endOfDirectory(context.addon_handle)
@@ -435,21 +448,31 @@ def list_episodes(tv_id, season_number):
 
 def search():
     xbmcplugin.setContent(context.addon_handle, 'videos')
+    page = context.args.get('page', 1)
+    try:
+        page = int(page)
+    except (ValueError, TypeError):
+        page = 1
     search_string = context.args.get("query")
     if not search_string:
         search_string = xbmcgui.Dialog().input('Search for Movie or TV Show')
     if not search_string:
         xbmcplugin.endOfDirectory(context.addon_handle)
         return
-    storage.save_to_search_history(search_string)
+    if page == 1:
+        storage.save_to_search_history(search_string)
     api_query = search_string.replace(' ', '_')
-    cache_key = f"search_{api_query}"
+    cache_key = f"search_{api_query}_{page}"
+    pDialog = xbmcgui.DialogProgressBG()
+    pDialog.create('KodiSeerr', 'Fetching Results')
     data = cache.get_cached(cache_key)
     if not data:
-        data = api_client.client.api_request('/search', params={'query': api_query})
+        data = api_client.client.api_request('/search', params={'query': api_query, 'page': page})
         if data:
             cache.set_cached(cache_key, data)
+    pDialog.update(50)
     results = data.get('results', []) if data else []
+    total_pages = data.get('totalPages', 1) if data else 1
     media_results = [r for r in results if r.get('mediaType') in ('movie', 'tv')]
     person_results = [r for r in results if r.get('mediaType') == 'person']
     for item in person_results:
@@ -470,6 +493,8 @@ def search():
         type_label = "(Movie)" if media_type == "movie" else "(TV Show)"
         full_title = f"{title} ({year}) {type_label}" if year else f"{title} {type_label}"
         item_id = item.get('id')
+        status = media_utils.get_media_status(media_type, item_id, item)
+        status_label = media_utils.get_status_label(status)
         ctx_menu = [
             ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
             ('Add to Favorites', f'RunPlugin({build_url({"mode": "add_favorite", "type": media_type, "id": item_id})})'),
@@ -477,10 +502,15 @@ def search():
         url = build_url({'mode': 'request', 'type': media_type, 'id': item_id})
         list_item = xbmcgui.ListItem(label=full_title)
         list_item.addContextMenuItems(ctx_menu)
-        media_utils.set_info_tag(list_item, media_utils.make_info(item, media_type))
+        info = media_utils.make_info(item, media_type)
+        if status_label:
+            info['plot'] = f"{status_label}\n{info['plot']}" if info.get('plot') else status_label
+        media_utils.set_info_tag(list_item, info)
         list_item.setArt(media_utils.make_art(item))
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
+    add_next_page_button({'mode': 'search', 'query': search_string}, page, total_pages)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_VIDEO_YEAR)
+    pDialog.close()
     xbmcplugin.endOfDirectory(context.addon_handle)

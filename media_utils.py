@@ -129,8 +129,13 @@ def set_info_tag(list_item, info):
 
 
 def get_media_status(media_type, media_id, item=None):
-    if item and item.get('mediaInfo'):
-        return item['mediaInfo'].get('status', 0)
+    if item is not None:
+        media_info = item.get('mediaInfo')
+        if media_info and isinstance(media_info, dict):
+            status = media_info.get('status')
+            if isinstance(status, (int, float)):
+                return int(status)
+        return 0
     cache_key = f"status_{media_type}_{media_id}"
     cached = cache.get_cached(cache_key)
     if cached is not None:
@@ -138,20 +143,27 @@ def get_media_status(media_type, media_id, item=None):
     try:
         data = api_client.client.api_request(f"/{media_type}/{media_id}")
         if data and data.get('mediaInfo'):
-            status = data['mediaInfo'].get('status', 0)
-            cache.set_cached(cache_key, status)
-            return status
+            status = data['mediaInfo'].get('status')
+            if isinstance(status, (int, float)):
+                status = int(status)
+                cache.set_cached(cache_key, status)
+                return status
+        cache.set_cached(cache_key, 1)
     except Exception as e:
         xbmc.log(f"[KodiSeerr] Status check error: {e}", xbmc.LOGERROR)
-    return 0
+    return 1
 
 
 def get_status_label(status):
+    import context
+    if not context.addon.getSettingBool('show_request_status'):
+        return ""
     status_map = {
-        1: "",
         2: "[COLOR yellow](Pending)[/COLOR]",
         3: "[COLOR cyan](Processing)[/COLOR]",
         4: "[COLOR lime](Partially Available)[/COLOR]",
         5: "[COLOR lime](Available)[/COLOR]",
+        6: "[COLOR gray](Blocklisted)[/COLOR]",
+        7: "[COLOR gray](Deleted)[/COLOR]",
     }
     return status_map.get(status, "")
