@@ -320,19 +320,22 @@ def show_requests(data, mode, current_page):
     page_info = data.get('pageInfo', {})
     total_pages = page_info.get('pages', 1)
     is_admin = has_manage_requests_permission()
+    is_widget = xbmc.getCondVisibility('Window.IsVisible(home)')
+    hide_pagination = context.addon.getSettingBool('hide_pagination_in_widgets')
 
-    page_info_item = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
-    page_info_item.setArt({'icon': 'DefaultAddonNone.png'})
-    xbmcplugin.addDirectoryItem(context.addon_handle, '', page_info_item, False)
+    if not (is_widget and hide_pagination):
+        page_info_item = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
+        page_info_item.setArt({'icon': 'DefaultAddonNone.png'})
+        xbmcplugin.addDirectoryItem(context.addon_handle, '', page_info_item, False)
 
-    jump_item = xbmcgui.ListItem(label='[B]Jump to Page...[/B]')
-    jump_item.setArt({'icon': 'DefaultAddonNone.png'})
-    xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': 'jump_to_page', 'original_mode': mode}), jump_item, True)
+        jump_item = xbmcgui.ListItem(label='[B]Jump to Page...[/B]')
+        jump_item.setArt({'icon': 'DefaultAddonNone.png'})
+        xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': 'jump_to_page', 'original_mode': mode}), jump_item, True)
 
-    if current_page > 1:
-        prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
-        prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
-        xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': mode, 'page': current_page - 1}), prev_item, True)
+        if current_page > 1:
+            prev_item = xbmcgui.ListItem(label=f'[B]<< Previous Page ({current_page - 1})[/B]')
+            prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
+            xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': mode, 'page': current_page - 1}), prev_item, True)
 
     for item in items:
         media = item.get('media', {})
@@ -380,10 +383,11 @@ def show_requests(data, mode, current_page):
         list_item.setArt(media_utils.make_art(media_data))
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
 
-    if current_page < total_pages:
-        next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
-        next_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
-        xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': mode, 'page': current_page + 1}), next_item, True)
+    if not (is_widget and hide_pagination):
+        if current_page < total_pages:
+            next_item = xbmcgui.ListItem(label=f'[B]Next Page ({current_page + 1}) >>[/B]')
+            next_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
+            xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': mode, 'page': current_page + 1}), next_item, True)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.endOfDirectory(context.addon_handle)
