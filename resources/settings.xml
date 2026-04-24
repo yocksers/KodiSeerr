@@ -46,5 +46,6 @@
         <setting id="import_settings" type="action" label="Import Settings" action="RunScript(special://home/addons/plugin.video.kodiseerr/backup_restore.py,import)" />
         <setting id="clear_cache" type="action" label="Clear Cache" action="RunPlugin(plugin://plugin.video.kodiseerr/?mode=clear_cache)" />
         <setting id="clear_search_history" type="action" label="Clear Search History" action="RunPlugin(plugin://plugin.video.kodiseerr/?mode=clear_search_history)" />
+        <setting id="inject_embuary_patch" type="action" label="Inject request button into Embuary info" action="RunPlugin(plugin://plugin.video.kodiseerr/?mode=inject_embuary_patch)" />
     </category>
 </settings>
