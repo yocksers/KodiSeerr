@@ -8,6 +8,7 @@ import browse
 import requests_view
 import actions
 import api_client
+import embuary_patch
 import play_local_file
 
 context.init(sys.argv)
@@ -36,6 +37,8 @@ elif mode == "test_connection":
     actions.test_connection()
 elif mode == "clear_cache":
     actions.clear_cache()
+elif mode == "inject_embuary_patch":
+    embuary_patch.run_interactive()
 elif mode == "statistics":
     requests_view.show_statistics()
 elif mode == "profile":
