@@ -461,7 +461,7 @@ def search():
         return
     if page == 1:
         storage.save_to_search_history(search_string)
-    api_query = search_string.replace(' ', '_')
+    api_query = search_string
     cache_key = f"search_{api_query}_{page}"
     pDialog = xbmcgui.DialogProgressBG()
     pDialog.create('KodiSeerr', 'Fetching Results')
