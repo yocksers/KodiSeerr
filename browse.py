@@ -467,7 +467,9 @@ def search():
     pDialog.create('KodiSeerr', 'Fetching Results')
     data = cache.get_cached(cache_key)
     if not data:
-        data = api_client.client.api_request('/search', params={'query': api_query, 'page': page})
+        from urllib.parse import urlencode, quote
+        qs = urlencode({'query': api_query, 'page': page}, quote_via=quote)
+        data = api_client.client.api_request(f'/search?{qs}', params=None)
         if data:
             cache.set_cached(cache_key, data)
     pDialog.update(50)
