@@ -83,11 +83,15 @@ def make_info(item, media_type):
         'studio': studio or "",
         'country': country or "",
         'mediatype': media_type,
+        'tmdb_id': item.get('id'),
     }
 
 
 def set_info_tag(list_item, info):
     tag = list_item.getVideoInfoTag()
+    if info.get('tmdb_id'):
+        try: tag.setUniqueIDs({'tmdb': str(info['tmdb_id'])}, 'tmdb')
+        except Exception: pass
     if info.get('title'): tag.setTitle(info['title'])
     if info.get('plot'): tag.setPlot(info['plot'])
     if info.get('year'):
