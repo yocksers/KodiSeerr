@@ -1,9 +1,11 @@
 import xbmc
 import xbmcplugin
 import xbmcgui
+import concurrent.futures
 import api_client
 import cache
 import context
+import library_utils
 import media_utils
 import storage
 from utils import build_url
@@ -337,19 +339,31 @@ def show_requests(data, mode, current_page):
             prev_item.setArt({'icon': 'DefaultVideoPlaylists.png'})
             xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': mode, 'page': current_page - 1}), prev_item, True)
 
-    for item in items:
+    def _fetch(req):
+        media = req.get('media', {})
+        media_id = media.get('tmdbId')
+        media_type = media.get('mediaType')
+        if not media_id or not media_type:
+            return req, None
+        cache_key = f"details_{media_type}_{media_id}"
+        data = cache.get_cached(cache_key)
+        if not data:
+            data = api_client.client.api_request(f"/{media_type}/{media_id}", params={})
+            if data:
+                cache.set_cached(cache_key, data)
+        return req, data
+
+    api_client.client.login()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        fetched = list(executor.map(_fetch, items))
+
+    for item, media_data in fetched:
+        if not media_data:
+            continue
         media = item.get('media', {})
         media_id = media.get('tmdbId')
         media_type = media.get('mediaType')
         request_id = item.get('id')
-        cache_key = f"details_{media_type}_{media_id}"
-        media_data = cache.get_cached(cache_key)
-        if not media_data:
-            media_data = api_client.client.api_request(f"/{media_type}/{media_id}", params={})
-            if media_data:
-                cache.set_cached(cache_key, media_data)
-        if not media_data:
-            continue
         label_text = media_data.get('title') or media_data.get('name') or "Untitled"
         media_status = media.get('status')
         if media_status == 2:
@@ -360,12 +374,14 @@ def show_requests(data, mode, current_page):
             label_text += " [COLOR lime](Partially Available)[/COLOR]"
         elif media_status == 5:
             label_text += " [COLOR lime](Available)[/COLOR]"
+        library_ctx = library_utils.get_library_context_items(media_type, media_id, media_status)
         ctx_menu = []
         if media_status in [2, 3]:
             ctx_menu.append(('Cancel Request', f'RunPlugin({build_url({"mode": "cancel_request", "request_id": request_id})})'))
         if media_status == 3 and is_admin:
             ctx_menu.append(('Retry Request', f'RunPlugin({build_url({"mode": "retry_request", "request_id": request_id})})'))
         ctx_menu.append(('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": media_id})})'))
+        ctx_menu.extend(library_ctx)
         if media_status == 5 and media_type == "movie":
             url = build_url({'mode': 'play_local_file', 'type': media_type, 'id': media_id})
             is_folder = False
@@ -376,11 +392,13 @@ def show_requests(data, mode, current_page):
             url = build_url({'mode': 'request', 'type': media_type, 'id': media_id})
             is_folder = False
         list_item = xbmcgui.ListItem(label=label_text)
+        list_item.setProperty('KodiSeerr.Status', str(media_status))
         if media_status == 5 and media_type == "movie":
             list_item.setProperty('IsPlayable', 'true')
         list_item.addContextMenuItems(ctx_menu)
         media_utils.set_info_tag(list_item, {'title': label_text, 'plot': f"Media ID: {media_id}, Type: {media_type}"})
-        list_item.setArt(media_utils.make_art(media_data))
+        art = media_utils.make_art(media_data)
+        list_item.setArt(art)
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
 
     if not (is_widget and hide_pagination):

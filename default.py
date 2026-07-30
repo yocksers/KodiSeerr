@@ -14,7 +14,7 @@ import play_local_file
 context.init(sys.argv)
 cache.load_cache()
 
-mode = context.args.get('mode')
+mode = context.args.get('mode') or context.args.get('action')
 page = context.args.get('page', 1)
 try:
     page = int(page)
@@ -156,3 +156,10 @@ elif mode == "person_credits" and context.args.get('id'):
     actions.show_person_credits(context.args.get('id'))
 elif mode == "retry_request" and context.args.get('request_id'):
     requests_view.retry_request(context.args.get('request_id'))
+elif mode == "request_tmdb":
+    requests_view.do_request(context.args.get('type'), context.args.get('id'))
+elif mode == "jump_to_library":
+    import library_utils
+    library_utils.jump_to_library(context.args.get('type'), context.args.get('id'))
+elif mode == "widget_paths":
+    browse.list_widget_paths()

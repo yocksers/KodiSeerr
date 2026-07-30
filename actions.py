@@ -5,6 +5,7 @@ import concurrent.futures
 import api_client
 import cache
 import context
+import library_utils
 import media_utils
 import storage
 from utils import build_url
@@ -122,16 +123,21 @@ def list_favorites():
                 art_data = data
             if year:
                 label = f"{label} ({year})"
+            status = media_utils.get_media_status(media_type, media_id, art_data or {})
+            library_ctx = library_utils.get_library_context_items(media_type, media_id, status)
             ctx_menu = [
                 ('Remove from Favorites', f'RunPlugin({build_url({"mode": "remove_favorite", "type": media_type, "id": media_id})})'),
                 ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": media_id})})'),
             ]
+            ctx_menu.extend(library_ctx)
             url = build_url({'mode': 'request', 'type': media_type, 'id': media_id})
             list_item = xbmcgui.ListItem(label=label)
+            list_item.setProperty('KodiSeerr.Status', str(status))
             list_item.addContextMenuItems(ctx_menu)
             if art_data:
                 media_utils.set_info_tag(list_item, media_utils.make_info(art_data, media_type))
-                list_item.setArt(media_utils.make_art(art_data))
+                art = media_utils.make_art(art_data)
+                list_item.setArt(art)
             elif meta.get('poster'):
                 list_item.setArt({
                     'poster': context.image_base + meta['poster'],
@@ -226,8 +232,13 @@ def show_profile():
                 label += f' ({year})'
             if status_str:
                 label += f'  {status_str}'
+            library_ctx = library_utils.get_library_context_items(media_type, media_id, media_status)
             list_item = xbmcgui.ListItem(label=label)
-            list_item.setArt(media_utils.make_art(media_data))
+            list_item.setProperty('KodiSeerr.Status', str(media_status))
+            if library_ctx:
+                list_item.addContextMenuItems(library_ctx)
+            art = media_utils.make_art(media_data)
+            list_item.setArt(art)
             media_utils.set_info_tag(list_item, media_utils.make_info(media_data, media_type))
             if media_status == 5 and media_type == 'movie':
                 url = build_url({'mode': 'play_local_file', 'type': media_type, 'id': media_id})
