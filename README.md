@@ -14,6 +14,17 @@ A Kodi addon for Jellyseerr and Overseerr integration. Browse, search, and reque
 
 ## Installation
 
+For repo install with auto updates:
+1. Download the repository.kodiseerr-1.0.0.zip found in releases.
+2. In Kodi, navigate to **Add-ons**
+3. Click the package icon (top left) → **Install from zip file**
+4. Select the downloaded ZIP file
+5. Wait for the "Add-on installed" notification
+6. Choose install from repository
+7. Choose "KodiSeerr Repository" → "Video add-ons" → "KodiSeerr"
+8. Wait for the "Add-on installed" notification
+
+For manual install:
 1. Download the latest `Kodiseerr.zip` release
 2. In Kodi, navigate to **Add-ons**
 3. Click the package icon (top left) → **Install from zip file**
