@@ -1,47 +1,14 @@
-name: Build Kodi Repository
+#!/usr/bin/env python3
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'plugin.video.kodiseerr/**'
-      - 'repository.kodiseerr/**'
+"""Repository generation entry point.
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+Currently this script is a no-op.
+"""
 
-    permissions:
-      contents: write
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 0
+def main() -> None:
+    return None
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
 
-      - name: Run Repo Generator Script
-        run: python generate_repo.py
-
-      - name: Commit and Push Updated Zips
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
-          git add zips/
-          
-          if git diff --staged --quiet; then
-            echo "No changes in zips to commit."
-          else
-            git commit -m "Auto-generate repo zips and manifest [skip ci]"
-            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main
-          fi
+if __name__ == "__main__":
+    main()
