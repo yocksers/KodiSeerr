@@ -36,10 +36,10 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add zips/
+          git add -A
           
           if git diff --staged --quiet; then
-            echo "No changes in zips to commit."
+            echo "No changes to commit."
           else
             git commit -m "Auto-generate repo zips and manifest [skip ci]"
             
