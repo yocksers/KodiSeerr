@@ -1,0 +1,42 @@
+name: Build Kodi repo zip files
+
+on:
+  push:
+    paths:
+      - "plugin.video.kodiseerr/addon.xml"
+      - "plugin.video.kodiseerr/**"
+      - "scripts/build_kodi_repo.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-kodi-repo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Build zip repo files
+        run: python scripts/build_kodi_repo.py
+
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add zip/addons.xml zip/addons.xml.md5 zip/plugin.video.kodiseerr/*.zip
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(repo): update kodi zip artifacts"
+          git push
