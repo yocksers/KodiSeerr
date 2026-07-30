@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addons>
+<addon id="plugin.video.kodiseerr" name="KodiSeerr" version="4.0" provider-name="Yock">
+    <requires>
+        <import addon="xbmc.python" version="3.0.1"/>
+        <import addon="script.module.requests" version="2.22.0"/>
+    </requires>
+    <extension point="xbmc.python.pluginsource" library="default.py">
+        <provides>video</provides>
+    </extension>
+    <extension point="xbmc.service" library="service.py" startonstartup="true"/>
+    <extension point="xbmc.addon.metadata">
+        <summary lang="en">KodiSeerr - Advanced Seerr Integration</summary>
+        <description lang="en">Full-featured Seerr integration for Kodi. Browse, search, and request movies and TV shows with advanced features including: favorites/watchlist, collections, statistics dashboard, season selection, quality profiles, API caching, detailed media info, context menus, and smart notifications.</description>
+        <platform>all</platform>
+        <assets>
+            <icon>icon.png</icon>
+            <fanart>fanart.jpg</fanart>
+        </assets>
+    </extension>
+</addon>
+</addons>
