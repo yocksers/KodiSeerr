@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="repository.kodiseerr" name="KodiSeerr Repository" version="1.0.0" provider-name="yocksers">
+    <extension point="xbmc.addon.repository" name="KodiSeerr Repository">
+        <dir>
+            <info compressed="false">https://raw.githubusercontent.com/yocksers/KodiSeerr/main/zips/addons.xml</info>
+            <checksum>https://raw.githubusercontent.com/yocksers/KodiSeerr/main/zips/addons.xml.md5</checksum>
+            <datadir zip="true">https://raw.githubusercontent.com/yocksers/KodiSeerr/main/zips/</datadir>
+        </dir>
+    </extension>
+    <extension point="xbmc.addon.metadata">
+        <summary>Official Repository for KodiSeerr</summary>
+        <description>Provides installation and automatic updates for KodiSeerr.</description>
+        <platform>all</platform>
+    </extension>
+</addon>
