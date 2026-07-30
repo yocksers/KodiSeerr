@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-    # Only run when relevant source files change, avoiding infinite loops
     paths:
       - 'plugin.video.kodiseerr/**'
       - 'repository.kodiseerr/**'
@@ -12,14 +11,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    # Grant permissions to commit and push changes back to the repo
+
     permissions:
       contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,15 +31,18 @@ jobs:
         run: python generate_repo.py
 
       - name: Commit and Push Updated Zips
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add zips/
           
-          # Only commit if there are changes in the zips directory
           if git diff --staged --quiet; then
-            echo "No changes to commit."
+            echo "No changes in zips to commit."
           else
             git commit -m "Auto-generate repo zips and manifest [skip ci]"
-            git push
+            
+            # Explicitly authenticate the push using the runtime token
+            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:main
           fi
