@@ -1,14 +1,6 @@
 # KodiSeerr
 
-A Kodi addon for Jellyseerr and Overseerr integration. Browse, search, and request movies and TV shows, track requests, manage favorites, and receive notifications all from within Kodi.
-
----
-
-## Requirements
-
-- Kodi 19+ (Matrix or newer)
-- A running Jellyseerr server
-- Network access to your Jellyseerr instance
+A Kodi addon for Seerr integration. Browse, search, and request movies and TV shows, track requests, manage favorites, and receive notifications from within Kodi.
 
 ---
 
@@ -61,9 +53,6 @@ Additional settings cover requests (4K, quality profiles, season selection), not
 2. Choose seasons (TV shows, if enabled) and quality profile (if enabled)
 3. For movies, choose regular or 4K (if enabled)
 4. Confirm your request
-
-### Favorites
-Right click any item and select **Add to Favorites** or **Remove from Favorites**. Access your list from the main menu.
 
 ---
 
