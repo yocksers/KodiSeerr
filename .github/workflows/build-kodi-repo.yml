@@ -2,6 +2,8 @@ name: Build Kodi repo zip files
 
 on:
   push:
+    branches:
+      - "main"
     paths:
       - "plugin.video.kodiseerr/addon.xml"
       - "plugin.video.kodiseerr/**"
@@ -30,6 +32,7 @@ jobs:
         run: python scripts/build_kodi_repo.py
 
       - name: Commit generated files
+        if: github.ref_type == 'branch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
