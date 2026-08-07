@@ -28,7 +28,7 @@ def export_settings():
             'polling_interval': addon.getSettingInt('polling_interval'),
             'notify_processing': addon.getSettingBool('notify_processing'),
             'notify_approved': addon.getSettingBool('notify_approved'),
-            'items_per_page': addon.getSettingInt('items_per_page'),
+            'pages_per_list': addon.getSettingInt('pages_per_list'),
             'show_year_in_title': addon.getSettingBool('show_year_in_title'),
             'show_media_type_badge': addon.getSettingBool('show_media_type_badge'),
             'show_ratings': addon.getSettingBool('show_ratings'),

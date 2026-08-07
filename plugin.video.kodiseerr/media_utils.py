@@ -129,7 +129,15 @@ def set_info_tag(list_item, info):
             tag.setCountries([info['country']])
         except AttributeError:
             tag.setCountry(info['country'])
-    if info.get('mediatype'): tag.setMediaType(info['mediatype'])
+    media_type = info.get('mediatype', '')
+    kodi_media_type = 'tvshow' if media_type == 'tv' else media_type
+    if kodi_media_type:
+        tag.setMediaType(kodi_media_type)
+    # tmdb_type/'tv' (not 'tvshow') is the TMDbHelper/ArcticFuse convention
+    if media_type in ('movie', 'tv'):
+        list_item.setProperty('tmdb_type', media_type)
+    if info.get('tmdb_id'):
+        list_item.setProperty('tmdb_id', str(info['tmdb_id']))
 
 
 def get_media_status(media_type, media_id, item=None):

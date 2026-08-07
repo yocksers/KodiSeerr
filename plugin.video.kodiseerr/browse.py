@@ -249,8 +249,10 @@ def list_items(data, mode, display_type=None, genre_id=None):
     items = data.get('results', [])
     current_page = data.get('page', 1)
     total_pages = data.get('totalPages', 1)
-    is_widget = xbmc.getCondVisibility('Window.IsVisible(home)')
+    is_widget = context.args.get('widget') == '1'
     hide_pagination = context.addon.getSettingBool('hide_pagination_in_widgets')
+    disable_pagination = context.addon.getSettingBool('disable_browse_pagination')
+    show_pagination = not ((is_widget and hide_pagination) or disable_pagination or total_pages <= 1)
 
     if items:
         first_type = items[0].get('mediaType', 'video')
@@ -266,7 +268,7 @@ def list_items(data, mode, display_type=None, genre_id=None):
         context.addon_handle, mode.replace('_', ' ').title() if mode else 'KodiSeerr'
     )
 
-    if not (is_widget and hide_pagination):
+    if show_pagination:
         page_info = xbmcgui.ListItem(label=f'[I]Page {current_page} of {total_pages}[/I]')
         page_info.setArt({'icon': 'DefaultAddonNone.png'})
         xbmcplugin.addDirectoryItem(context.addon_handle, '', page_info, False)
@@ -327,7 +329,7 @@ def list_items(data, mode, display_type=None, genre_id=None):
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
 
-    if not (is_widget and hide_pagination):
+    if show_pagination:
         next_params = {'mode': mode}
         if mode == "genre":
             next_params['genre_id'] = genre_id
@@ -500,13 +502,13 @@ def list_episodes(tv_id, season_number):
 
 
 def search():
-    xbmcplugin.setContent(context.addon_handle, 'videos')
     page = context.args.get('page', 1)
     try:
         page = int(page)
     except (ValueError, TypeError):
         page = 1
-    search_string = context.args.get("query")
+    search_string = context.args.get("query") or context.args.get("q")
+    media_filter = context.args.get("filter")
     if not search_string:
         search_string = xbmcgui.Dialog().input('Search for Movie or TV Show')
     if not search_string:
@@ -515,7 +517,7 @@ def search():
     if page == 1:
         storage.save_to_search_history(search_string)
     api_query = search_string
-    cache_key = f"search_{api_query}_{page}"
+    cache_key = f"search_{api_query}_{media_filter}_{page}"
     pDialog = xbmcgui.DialogProgressBG()
     pDialog.create('KodiSeerr', 'Fetching Results')
     data = cache.get_cached(cache_key)
@@ -528,18 +530,23 @@ def search():
     pDialog.update(50)
     results = data.get('results', []) if data else []
     total_pages = data.get('totalPages', 1) if data else 1
-    media_results = [r for r in results if r.get('mediaType') in ('movie', 'tv')]
+    if media_filter == 'movie':
+        media_results = [r for r in results if r.get('mediaType') == 'movie']
+    elif media_filter == 'tv':
+        media_results = [r for r in results if r.get('mediaType') == 'tv']
+    else:
+        media_results = [r for r in results if r.get('mediaType') in ('movie', 'tv')]
     person_results = [r for r in results if r.get('mediaType') == 'person']
-    for item in person_results:
-        person_id = item.get('id')
-        name = item.get('name') or 'Unknown Person'
-        known_for = item.get('knownForDepartment', '')
-        label = f"{name} (Person)" if not known_for else f"{name} ({known_for})"
-        list_item = xbmcgui.ListItem(label=label)
-        if item.get('profilePath'):
-            list_item.setArt({'thumb': context.image_base + item['profilePath']})
-        url = build_url({'mode': 'person_credits', 'id': person_id})
-        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, True)
+    if media_filter == 'movie':
+        xbmcplugin.setContent(context.addon_handle, 'movies')
+    elif media_filter == 'tv':
+        xbmcplugin.setContent(context.addon_handle, 'tvshows')
+    elif media_results:
+        first_type = media_results[0].get('mediaType')
+        xbmcplugin.setContent(context.addon_handle, 'movies' if first_type == 'movie' else 'tvshows')
+    else:
+        xbmcplugin.setContent(context.addon_handle, 'movies')
+    hide_people = context.addon.getSettingBool('hide_people_in_search')
     for item in media_results:
         media_type = item.get('mediaType', 'movie')
         title = item.get('title') or item.get('name')
@@ -579,7 +586,21 @@ def search():
         art = media_utils.make_art(item)
         list_item.setArt(art)
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
-    add_next_page_button({'mode': 'search', 'query': search_string}, page, total_pages)
+    if not hide_people and not media_filter:
+        for item in person_results:
+            person_id = item.get('id')
+            name = item.get('name') or 'Unknown Person'
+            known_for = item.get('knownForDepartment', '')
+            label = f"{name} (Person)" if not known_for else f"{name} ({known_for})"
+            list_item = xbmcgui.ListItem(label=label)
+            if item.get('profilePath'):
+                list_item.setArt({'thumb': context.image_base + item['profilePath']})
+            url = build_url({'mode': 'person_credits', 'id': person_id})
+            xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, True)
+    next_params = {'mode': 'search', 'query': search_string}
+    if media_filter:
+        next_params['filter'] = media_filter
+    add_next_page_button(next_params, page, total_pages)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_VIDEO_YEAR)
@@ -603,7 +624,17 @@ def list_widget_paths():
         ('Request Progress',   'requests',         'DefaultInProgressShows.png'),
     ]
     for label, mode, icon in widget_sources:
-        url = build_url({'mode': mode})
+        url = build_url({'mode': mode, 'widget': '1'})
+        list_item = xbmcgui.ListItem(label=label, label2=url)
+        list_item.setArt({'icon': icon, 'thumb': icon})
+        list_item.getVideoInfoTag().setPlot(f'Widget source path:\n{url}')
+        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, True)
+    search_widget_sources = [
+        ('Search: All',      build_url({'mode': 'search', 'query': ''}),                    'DefaultAddonsSearch.png'),
+        ('Search: Movies',   build_url({'mode': 'search', 'filter': 'movie', 'query': ''}), 'DefaultMovies.png'),
+        ('Search: TV Shows', build_url({'mode': 'search', 'filter': 'tv', 'query': ''}),    'DefaultTVShows.png'),
+    ]
+    for label, url, icon in search_widget_sources:
         list_item = xbmcgui.ListItem(label=label, label2=url)
         list_item.setArt({'icon': icon, 'thumb': icon})
         list_item.getVideoInfoTag().setPlot(f'Widget source path:\n{url}')

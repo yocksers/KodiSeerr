@@ -23,6 +23,36 @@ except (ValueError, TypeError):
 
 
 def _fetch_list(cache_key, endpoint, params):
+    disable_pagination = context.addon.getSettingBool('disable_browse_pagination')
+    pages_per_list = 10 if disable_pagination else max(1, context.addon.getSettingInt('pages_per_list'))
+
+    if disable_pagination or pages_per_list > 1:
+        virtual_page = 1 if disable_pagination else int(params.get('page', 1))
+        base_key = cache_key.rsplit('_', 1)[0] if cache_key[-1:].isdigit() else cache_key
+        batch_key = f"{base_key}_p{virtual_page}_n{pages_per_list}"
+        cached = cache.get_cached(batch_key)
+        if cached:
+            return cached
+        base_params = {k: v for k, v in params.items() if k != 'page'}
+        start_page = (virtual_page - 1) * pages_per_list + 1
+        first = api_client.client.api_request(endpoint, params={**base_params, 'page': start_page})
+        if not first:
+            return None
+        api_total = first.get('totalPages', 1)
+        end_page = min(start_page + pages_per_list - 1, api_total)
+        results = list(first.get('results', []))
+        for p in range(start_page + 1, end_page + 1):
+            page_data = api_client.client.api_request(endpoint, params={**base_params, 'page': p})
+            if page_data:
+                results.extend(page_data.get('results', []))
+        virtual_total = 1 if disable_pagination else (api_total + pages_per_list - 1) // pages_per_list
+        merged = dict(first)
+        merged['results'] = results
+        merged['page'] = virtual_page
+        merged['totalPages'] = virtual_total
+        cache.set_cached(batch_key, merged)
+        return merged
+
     data = cache.get_cached(cache_key)
     if not data:
         data = api_client.client.api_request(endpoint, params=params)

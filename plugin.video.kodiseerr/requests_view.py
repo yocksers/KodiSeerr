@@ -322,7 +322,7 @@ def show_requests(data, mode, current_page):
     page_info = data.get('pageInfo', {})
     total_pages = page_info.get('pages', 1)
     is_admin = has_manage_requests_permission()
-    is_widget = xbmc.getCondVisibility('Window.IsVisible(home)')
+    is_widget = context.args.get('widget') == '1'
     hide_pagination = context.addon.getSettingBool('hide_pagination_in_widgets')
 
     if not (is_widget and hide_pagination):
