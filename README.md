@@ -72,5 +72,5 @@ If you enjoy KodiSeerr and want to donate for a coffee or to kill some braincell
 
 ## Links
 
-- Jellyseerr: https://github.com/Fallenbagel/jellyseerr
+- Seerr: https://github.com/seerr-team/seerr
 - Kodi: https://kodi.tv/
