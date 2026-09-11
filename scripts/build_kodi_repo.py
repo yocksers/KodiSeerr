@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 ADDON_DIR = ROOT / "plugin.video.kodiseerr"
 ADDON_XML = ADDON_DIR / "addon.xml"
-ZIP_ROOT = ROOT / "zip"
+ZIP_ROOT = ROOT / "zips"
 
 
 def read_addon_info(addon_xml: Path):
