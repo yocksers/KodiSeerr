@@ -7,8 +7,7 @@ A Kodi addon for Jellyseerr and Overseerr integration. Browse, search, and reque
 ## Requirements
 
 - Kodi 19+ (Matrix or newer)
-- A running Jellyseerr server
-- Network access to your Jellyseerr instance
+- A running Seerr server
 
 ---
 
@@ -72,5 +71,5 @@ If you enjoy KodiSeerr and want to donate for a coffee or to kill some braincell
 
 ## Links
 
-- Jellyseerr: https://github.com/Fallenbagel/jellyseerr
-- Kodi: https://kodi.tv/
+- Sseerr: https://seerr.dev
+- Kodi: https://kodi.tv
