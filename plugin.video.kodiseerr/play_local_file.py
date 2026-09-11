@@ -4,6 +4,28 @@ import xbmcplugin
 import json
 import api_client
 import context
+import library_utils
+
+
+def play_next_episode(media_type, media_id):
+    try:
+        data = api_client.client.api_request(f"/{media_type}/{media_id}")
+        external_ids = data.get("externalIds", {}) if data else {}
+    except Exception:
+        external_ids = {}
+
+    tmdb_id = str(media_id)
+    imdb_id = str(external_ids.get("imdbId") or "")
+    tvdb_id = str(external_ids.get("tvdbId") or "")
+
+    result = library_utils.find_next_episode(tmdb_id, tvdb_id, imdb_id)
+    if not result or not result[2]:
+        xbmcgui.Dialog().notification('KodiSeerr', 'No unwatched episodes found in local library', xbmcgui.NOTIFICATION_INFO, 4000)
+        return
+
+    season, episode, path = result
+    xbmc.Player().play(path)
+    xbmcgui.Dialog().notification('KodiSeerr', f'Playing S{int(season):02d}E{int(episode):02d}', xbmcgui.NOTIFICATION_INFO, 3000)
 
 
 def play_local_file(media_type, media_id, season=None, episode=None):

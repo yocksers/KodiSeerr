@@ -92,6 +92,11 @@ elif mode == "play_local_file":
         context.args.get('season'),
         context.args.get('episode'),
     )
+elif mode == "play_next_episode":
+    play_local_file.play_next_episode(
+        context.args.get('type'),
+        context.args.get('id'),
+    )
 elif mode == "jump_to_page":
     browse.jump_to_page()
 elif mode == "collections":
@@ -193,3 +198,12 @@ elif mode == "jump_to_library":
     library_utils.jump_to_library(context.args.get('type'), context.args.get('id'))
 elif mode == "widget_paths":
     browse.list_widget_paths()
+elif mode == "discover_4k":
+    browse.list_discover_4k()
+elif mode == "recently_requested":
+    data = api_client.client.api_request("/request", params={"take": 10, "skip": 0, "sort": "added", "filter": "all"})
+    if data:
+        requests_view.show_requests(data, mode, 1)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch recently requested", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)

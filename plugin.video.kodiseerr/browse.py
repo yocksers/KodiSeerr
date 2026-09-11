@@ -36,6 +36,7 @@ def list_main_menu():
         ('top_rated_tv',    'Top Rated TV Shows',        'DefaultTVShows.png',               True),
         ('upcoming_movies', 'Upcoming Movies',           'DefaultMovies.png',                True),
         ('upcoming_tv',     'Upcoming TV Shows',         'DefaultTVShows.png',               True),
+        ('discover_4k',     'Discover 4K',               'DefaultMovies.png',                True),
         (None, None, None, False),
         ('genres_movie',    'Movies by Genre',           'DefaultGenre.png',                 True),
         ('genres_tv',       'TV Shows by Genre',         'DefaultGenre.png',                 True),
@@ -232,6 +233,7 @@ def show_collection_details(collection_id):
                 is_folder = False
             list_item = xbmcgui.ListItem(label=label)
             list_item.setProperty('KodiSeerr.Status', str(status))
+            list_item.setProperty('IsRequested', 'true' if status >= 2 else 'false')
             if status == 5 and media_type == 'movie':
                 list_item.setProperty('IsPlayable', 'true')
             list_item.addContextMenuItems(ctx_menu)
@@ -318,6 +320,7 @@ def list_items(data, mode, display_type=None, genre_id=None):
             is_folder = False
         list_item = xbmcgui.ListItem(label=label)
         list_item.setProperty('KodiSeerr.Status', str(status))
+        list_item.setProperty('IsRequested', 'true' if status >= 2 else 'false')
         if status == 5 and media_type == 'movie':
             list_item.setProperty('IsPlayable', 'true')
         list_item.addContextMenuItems(ctx_menu)
@@ -435,6 +438,7 @@ def list_recently_added():
             is_folder = False
         list_item = xbmcgui.ListItem(label=label)
         list_item.setProperty('KodiSeerr.Status', str(status))
+        list_item.setProperty('IsRequested', 'true' if status >= 2 else 'false')
         if status == 5 and media_type == 'movie':
             list_item.setProperty('IsPlayable', 'true')
         list_item.addContextMenuItems(ctx_menu)
@@ -487,14 +491,25 @@ def list_episodes(tv_id, season_number):
         xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch episodes", xbmcgui.NOTIFICATION_ERROR)
         xbmcplugin.endOfDirectory(context.addon_handle)
         return
+    show_status = media_utils.get_media_status('tv', tv_id)
+    is_locally_available = show_status in (4, 5)
     for ep in data.get('episodes', []):
         ep_num = ep.get('episodeNumber', 0)
         title = ep.get('name') or ep.get('title', f"Episode {ep_num}")
         label = f"S{season_number:02d}E{ep_num:02d} - {title}"
         list_item = xbmcgui.ListItem(label=label)
+        list_item.setProperty('IsRequested', 'true' if show_status >= 2 else 'false')
         media_utils.set_info_tag(list_item, media_utils.make_info(ep, 'episode'))
         list_item.setArt(media_utils.make_art(ep))
-        xbmcplugin.addDirectoryItem(context.addon_handle, '', list_item, False)
+        if is_locally_available:
+            url = build_url({'mode': 'play_local_file', 'type': 'tv', 'id': tv_id, 'season': season_number, 'episode': ep_num})
+            list_item.setProperty('IsPlayable', 'true')
+        else:
+            url = build_url({'mode': 'request', 'type': 'tv', 'id': tv_id, 'season': season_number})
+        list_item.addContextMenuItems([
+            ('Request This Season', f'RunPlugin({build_url({"mode": "request", "type": "tv", "id": tv_id, "season": season_number})})'),
+        ])
+        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, False)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_LABEL)
     xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_EPISODE)
@@ -576,6 +591,7 @@ def search():
             is_folder = False
         list_item = xbmcgui.ListItem(label=full_title)
         list_item.setProperty('KodiSeerr.Status', str(status))
+        list_item.setProperty('IsRequested', 'true' if status >= 2 else 'false')
         if status == 5 and media_type == 'movie':
             list_item.setProperty('IsPlayable', 'true')
         list_item.addContextMenuItems(ctx_menu)
@@ -608,6 +624,90 @@ def search():
     xbmcplugin.endOfDirectory(context.addon_handle)
 
 
+def list_discover_4k():
+    xbmcplugin.setContent(context.addon_handle, 'videos')
+    xbmcplugin.setPluginCategory(context.addon_handle, 'Discover 4K')
+    page = context.args.get('page', 1)
+    try:
+        page = int(page)
+    except Exception:
+        page = 1
+
+    api_client.client.login()
+    results = [None, None]
+
+    def _fetch(idx, cache_key, endpoint):
+        data = cache.get_cached(cache_key)
+        if not data:
+            data = api_client.client.api_request(endpoint, params={"sortBy": "popularity.desc", "page": page})
+            if data:
+                cache.set_cached(cache_key, data)
+        results[idx] = data
+
+    t_movies = threading.Thread(target=_fetch, args=(0, f"discover_4k_movies_{page}", "/discover/movies"))
+    t_tv = threading.Thread(target=_fetch, args=(1, f"discover_4k_tv_{page}", "/discover/tv"))
+    t_movies.start()
+    t_tv.start()
+    t_movies.join()
+    t_tv.join()
+
+    movies_data, tv_data = results
+    all_items = []
+    if movies_data:
+        for item in movies_data.get('results', []):
+            item.setdefault('mediaType', 'movie')
+            all_items.append(item)
+    if tv_data:
+        for item in tv_data.get('results', []):
+            item.setdefault('mediaType', 'tv')
+            all_items.append(item)
+
+    items_4k = [i for i in all_items if (i.get('mediaInfo') or {}).get('status4k')]
+
+    for item in items_4k[:20]:
+        media_type = item.get('mediaType')
+        title = item.get('title') or item.get('name')
+        release_date = item.get('releaseDate') or item.get('firstAirDate')
+        year = int(release_date.split("-")[0]) if release_date and release_date.split("-")[0].isdigit() else None
+        label = f"{title} ({year}) [4K]" if year else f"{title} [4K]"
+        item_id = item.get('id')
+        status = media_utils.get_media_status(media_type, item_id, item)
+        status_label = media_utils.get_status_label(status)
+        library_ctx = library_utils.get_library_context_items(media_type, item_id, status)
+        ctx_menu = [
+            ('Show Details', f'RunPlugin({build_url({"mode": "show_details", "type": media_type, "id": item_id})})'),
+            ('Add to Favorites', f'RunPlugin({build_url({"mode": "add_favorite", "type": media_type, "id": item_id})})'),
+        ]
+        ctx_menu.extend(library_ctx)
+        if status == 5:
+            ctx_menu.append(('Request...', f'RunPlugin({build_url({"mode": "request", "type": media_type, "id": item_id})})'))
+        if status == 5 and media_type == 'movie':
+            url = build_url({'mode': 'play_local_file', 'type': media_type, 'id': item_id})
+            is_folder = False
+        elif status == 5 and media_type == 'tv':
+            url = build_url({'mode': 'tvshow', 'id': item_id})
+            is_folder = True
+        else:
+            url = build_url({'mode': 'request', 'type': media_type, 'id': item_id})
+            is_folder = False
+        list_item = xbmcgui.ListItem(label=label)
+        list_item.setProperty('KodiSeerr.Status', str(status))
+        list_item.setProperty('IsRequested', 'true' if status >= 2 else 'false')
+        if status == 5 and media_type == 'movie':
+            list_item.setProperty('IsPlayable', 'true')
+        list_item.addContextMenuItems(ctx_menu)
+        info = media_utils.make_info(item, media_type)
+        if status_label:
+            info['plot'] = f"{status_label}\n{info['plot']}" if info.get('plot') else status_label
+        media_utils.set_info_tag(list_item, info)
+        art = media_utils.make_art(item)
+        list_item.setArt(art)
+        xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
+    xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_UNSORTED)
+    xbmcplugin.addSortMethod(context.addon_handle, xbmcplugin.SORT_METHOD_LABEL)
+    xbmcplugin.endOfDirectory(context.addon_handle)
+
+
 def list_widget_paths():
     xbmcplugin.setContent(context.addon_handle, 'files')
     xbmcplugin.setPluginCategory(context.addon_handle, 'Skin Widget Sources')
@@ -620,8 +720,10 @@ def list_widget_paths():
         ('Upcoming Movies',    'upcoming_movies',  'DefaultMovies.png'),
         ('Upcoming TV Shows',  'upcoming_tv',      'DefaultTVShows.png'),
         ('Recently Added',     'recently_added',   'DefaultRecentlyAddedMovies.png'),
+        ('Discover 4K',        'discover_4k',      'DefaultMovies.png'),
         ('My Favorites',       'favorites',        'DefaultFavourites.png'),
         ('Request Progress',   'requests',         'DefaultInProgressShows.png'),
+        ('Recently Requested',  'recently_requested', 'DefaultInProgressShows.png'),
     ]
     for label, mode, icon in widget_sources:
         url = build_url({'mode': mode, 'widget': '1'})

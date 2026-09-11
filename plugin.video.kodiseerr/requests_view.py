@@ -393,6 +393,7 @@ def show_requests(data, mode, current_page):
             is_folder = False
         list_item = xbmcgui.ListItem(label=label_text)
         list_item.setProperty('KodiSeerr.Status', str(media_status))
+        list_item.setProperty('IsRequested', 'true' if media_status and media_status >= 2 else 'false')
         if media_status == 5 and media_type == "movie":
             list_item.setProperty('IsPlayable', 'true')
         list_item.addContextMenuItems(ctx_menu)

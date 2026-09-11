@@ -110,8 +110,13 @@ class SeerrClient:
             resp.raise_for_status()
             return resp.json()
         except requests.HTTPError as e:
-            xbmc.log(f"[kodiseerr] API request failed: {e.response.status_code} {e.response.reason}", xbmc.LOGERROR)
+            body = ""
+            try:
+                body = e.response.text[:300]
+            except Exception:
+                pass
+            xbmc.log(f"[kodiseerr] API request failed: {method} {endpoint} -> {e.response.status_code} {e.response.reason} {body}", xbmc.LOGERROR)
             return None
         except requests.RequestException as e:
-            xbmc.log(f"[kodiseerr] API request failed: {e}", xbmc.LOGERROR)
+            xbmc.log(f"[kodiseerr] API request failed: {method} {endpoint} -> {e}", xbmc.LOGERROR)
             return None

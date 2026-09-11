@@ -18,6 +18,8 @@
         <setting id="remember_last_quality" type="bool" label="Remember last quality choice" default="true" />
         <setting id="enable_season_selection" type="bool" label="Enable TV season selection" default="true" />
         <setting id="confirm_before_request" type="bool" label="Confirm before requesting" default="true" />
+        <setting type="sep" />
+        <setting id="enable_context_menu_request" type="bool" label="Enable 'Request via Seerr' context menu on library items" default="true" />
     </category>
     <category label="Notifications">
         <setting id="enable_request_notifications" type="bool" label="Enable Request Notifications" default="true" />

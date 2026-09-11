@@ -52,6 +52,26 @@ def _find_tvshow(tmdb_id, imdb_id='', tvdb_id=''):
     return None
 
 
+def find_next_episode(tmdb_id, tvdb_id='', imdb_id=''):
+    show_id = _find_tvshow(tmdb_id, imdb_id, tvdb_id)
+    if not show_id:
+        return None
+    resp = json.loads(xbmc.executeJSONRPC(json.dumps({
+        'jsonrpc': '2.0', 'method': 'VideoLibrary.GetEpisodes',
+        'params': {
+            'tvshowid': show_id,
+            'properties': ['season', 'episode', 'file', 'playcount'],
+            'filter': {'field': 'playcount', 'operator': 'is', 'value': '0'},
+        }, 'id': 1,
+    })))
+    episodes = [e for e in resp.get('result', {}).get('episodes', []) if e.get('season', 0) > 0]
+    if not episodes:
+        return None
+    episodes.sort(key=lambda e: (e.get('season', 0), e.get('episode', 0)))
+    ep = episodes[0]
+    return ep.get('season'), ep.get('episode'), ep.get('file')
+
+
 def jump_to_library(media_type, media_id):
     import api_client
     import cache
@@ -97,6 +117,11 @@ def get_library_context_items(media_type, media_id, status):
         'View in Local Library',
         f'RunPlugin({build_url({"mode": "jump_to_library", "type": media_type, "id": media_id})})'
     )]
+    if media_type == 'tv':
+        items.append((
+            'Play Next Episode',
+            f'RunPlugin({build_url({"mode": "play_next_episode", "type": media_type, "id": media_id})})'
+        ))
     for addon_id, addon_name in get_installed_media_addons():
         items.append((
             f'Browse in {addon_name}',

@@ -235,6 +235,7 @@ def show_profile():
             library_ctx = library_utils.get_library_context_items(media_type, media_id, media_status)
             list_item = xbmcgui.ListItem(label=label)
             list_item.setProperty('KodiSeerr.Status', str(media_status))
+            list_item.setProperty('IsRequested', 'true' if media_status and media_status >= 2 else 'false')
             if library_ctx:
                 list_item.addContextMenuItems(library_ctx)
             art = media_utils.make_art(media_data)
