@@ -36,7 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add zips/addons.xml zips/addons.xml.md5 zips/plugin.video.kodiseerr/*.zip
+          git add zips/addons.xml zip/addons.xml.md5 zips/plugin.video.kodiseerr/*.zip
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0
