@@ -1,6 +1,6 @@
 # KodiSeerr
 
-A Kodi addon for Jellyseerr and Overseerr integration. Browse, search, and request movies and TV shows, track requests, manage favorites, and receive notifications all from within Kodi.
+A Kodi addon for Seerr integration. Browse, search, and request movies and TV shows, track requests, manage favorites, and receive notifications all from within Kodi.
 
 ---
 
