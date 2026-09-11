@@ -1,0 +1,209 @@
+﻿import sys
+import xbmc
+import xbmcgui
+import xbmcplugin
+import context
+import cache
+import browse
+import requests_view
+import actions
+import api_client
+import embuary_patch
+import play_local_file
+
+context.init(sys.argv)
+cache.load_cache()
+
+mode = context.args.get('mode') or context.args.get('action')
+page = context.args.get('page', 1)
+try:
+    page = int(page)
+except (ValueError, TypeError):
+    page = 1
+
+
+def _fetch_list(cache_key, endpoint, params):
+    disable_pagination = context.addon.getSettingBool('disable_browse_pagination')
+    pages_per_list = 10 if disable_pagination else max(1, context.addon.getSettingInt('pages_per_list'))
+
+    if disable_pagination or pages_per_list > 1:
+        virtual_page = 1 if disable_pagination else int(params.get('page', 1))
+        base_key = cache_key.rsplit('_', 1)[0] if cache_key[-1:].isdigit() else cache_key
+        batch_key = f"{base_key}_p{virtual_page}_n{pages_per_list}"
+        cached = cache.get_cached(batch_key)
+        if cached:
+            return cached
+        base_params = {k: v for k, v in params.items() if k != 'page'}
+        start_page = (virtual_page - 1) * pages_per_list + 1
+        first = api_client.client.api_request(endpoint, params={**base_params, 'page': start_page})
+        if not first:
+            return None
+        api_total = first.get('totalPages', 1)
+        end_page = min(start_page + pages_per_list - 1, api_total)
+        results = list(first.get('results', []))
+        for p in range(start_page + 1, end_page + 1):
+            page_data = api_client.client.api_request(endpoint, params={**base_params, 'page': p})
+            if page_data:
+                results.extend(page_data.get('results', []))
+        virtual_total = 1 if disable_pagination else (api_total + pages_per_list - 1) // pages_per_list
+        merged = dict(first)
+        merged['results'] = results
+        merged['page'] = virtual_page
+        merged['totalPages'] = virtual_total
+        cache.set_cached(batch_key, merged)
+        return merged
+
+    data = cache.get_cached(cache_key)
+    if not data:
+        data = api_client.client.api_request(endpoint, params=params)
+        if data:
+            cache.set_cached(cache_key, data)
+    return data
+
+
+if not mode:
+    browse.list_main_menu()
+elif mode == "test_connection":
+    actions.test_connection()
+elif mode == "clear_cache":
+    actions.clear_cache()
+elif mode == "inject_embuary_patch":
+    embuary_patch.run_interactive()
+elif mode == "statistics":
+    requests_view.show_statistics()
+elif mode == "profile":
+    actions.show_profile()
+elif mode == "favorites":
+    actions.list_favorites()
+elif mode == "add_favorite":
+    actions.add_to_favorites(context.args.get('type'), context.args.get('id'))
+elif mode == "remove_favorite":
+    actions.remove_from_favorites(context.args.get('type'), context.args.get('id'))
+elif mode == "show_details":
+    actions.show_details(context.args.get('type'), context.args.get('id'))
+elif mode == "report_issue":
+    actions.report_issue(context.args.get('type'), context.args.get('id'))
+elif mode == "cancel_request":
+    requests_view.cancel_request(context.args.get('request_id'))
+elif mode == "play_local_file":
+    play_local_file.play_local_file(
+        context.args.get('type'),
+        context.args.get('id'),
+        context.args.get('season'),
+        context.args.get('episode'),
+    )
+elif mode == "play_next_episode":
+    play_local_file.play_next_episode(
+        context.args.get('type'),
+        context.args.get('id'),
+    )
+elif mode == "jump_to_page":
+    browse.jump_to_page()
+elif mode == "collections":
+    browse.list_collections()
+elif mode == "collection_details":
+    browse.show_collection_details(context.args.get('collection_id'))
+elif mode == "recently_added":
+    browse.list_recently_added()
+elif mode == "search":
+    browse.search()
+elif mode == "request":
+    requests_view.do_request(context.args.get('type'), context.args.get('id'))
+elif mode == "requests":
+    take = 20
+    skip = (page - 1) * take
+    data = api_client.client.api_request("/request", params={"take": take, "skip": skip, "sort": "added", "filter": "all"})
+    if data:
+        requests_view.show_requests(data, mode, page)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch requests", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "tvshow" and context.args.get("id"):
+    browse.list_seasons(context.args.get("id"))
+elif mode == "season" and context.args.get("tv_id") and context.args.get("season"):
+    browse.list_episodes(context.args.get("tv_id"), int(context.args.get("season")))
+elif mode == "genres" and context.args.get("media_type"):
+    browse.list_genres(context.args.get("media_type"))
+elif mode == "genre" and context.args.get("display_type") and context.args.get("genre_id"):
+    display_type = context.args.get("display_type")
+    genre_id = context.args.get("genre_id")
+    data = _fetch_list(
+        f"genre_{display_type}_{genre_id}_{page}",
+        f"/discover/{display_type}/genre/{genre_id}",
+        {"page": page},
+    )
+    if data:
+        browse.list_items(data, mode, display_type, genre_id)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch genre items", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "trending":
+    data = _fetch_list(f"trending_{page}", "/discover/trending", {"page": page})
+    if data:
+        browse.list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch trending", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "popular_movies":
+    data = _fetch_list(f"popular_movies_{page}", "/discover/movies", {"sortBy": "popularity.desc", "page": page})
+    if data:
+        browse.list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch popular movies", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "popular_tv":
+    data = _fetch_list(f"popular_tv_{page}", "/discover/tv", {"sortBy": "popularity.desc", "page": page})
+    if data:
+        browse.list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch popular TV shows", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "upcoming_movies":
+    data = _fetch_list(f"upcoming_movies_{page}", "/discover/movies/upcoming", {"page": page})
+    if data:
+        browse.list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch upcoming movies", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "upcoming_tv":
+    data = _fetch_list(f"upcoming_tv_{page}", "/discover/tv/upcoming", {"page": page})
+    if data:
+        browse.list_items(data, mode)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch upcoming TV shows", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)
+elif mode == "top_rated_movies":
+    browse.list_top_rated('movie')
+elif mode == "top_rated_tv":
+    browse.list_top_rated('tv')
+elif mode == "networks":
+    browse.list_networks()
+elif mode == "network" and context.args.get('network_id'):
+    browse.list_network_shows(int(context.args.get('network_id')))
+elif mode == "search_history":
+    browse.list_search_history()
+elif mode == "clear_search_history":
+    import storage
+    storage.clear_search_history()
+    xbmcgui.Dialog().notification("KodiSeerr", "Search history cleared", xbmcgui.NOTIFICATION_INFO)
+    xbmc.executebuiltin("Container.Refresh")
+elif mode == "person_credits" and context.args.get('id'):
+    actions.show_person_credits(context.args.get('id'))
+elif mode == "retry_request" and context.args.get('request_id'):
+    requests_view.retry_request(context.args.get('request_id'))
+elif mode == "request_tmdb":
+    requests_view.do_request(context.args.get('type'), context.args.get('id'))
+elif mode == "jump_to_library":
+    import library_utils
+    library_utils.jump_to_library(context.args.get('type'), context.args.get('id'))
+elif mode == "widget_paths":
+    browse.list_widget_paths()
+elif mode == "discover_4k":
+    browse.list_discover_4k()
+elif mode == "recently_requested":
+    data = api_client.client.api_request("/request", params={"take": 10, "skip": 0, "sort": "added", "filter": "all"})
+    if data:
+        requests_view.show_requests(data, mode, 1)
+    else:
+        xbmcgui.Dialog().notification("KodiSeerr", "Failed to fetch recently requested", xbmcgui.NOTIFICATION_ERROR)
+        xbmcplugin.endOfDirectory(context.addon_handle)

@@ -1,22 +1,19 @@
 # KodiSeerr
 
-A Kodi addon for Seerr integration. Browse, search, and request movies and TV shows, track requests, manage favorites, and receive notifications from within Kodi.
+A Kodi addon for Jellyseerr and Overseerr integration. Browse, search, and request movies and TV shows, track requests, manage favorites, and receive notifications all from within Kodi.
+
+---
+
+## Requirements
+
+- Kodi 19+ (Matrix or newer)
+- A running Jellyseerr server
+- Network access to your Jellyseerr instance
 
 ---
 
 ## Installation
 
-For repo install with auto updates:
-1. Download the repository.kodiseerr-1.0.0.zip found in releases.
-2. In Kodi, navigate to **Add-ons**
-3. Click the package icon (top left) → **Install from zip file**
-4. Select the downloaded ZIP file
-5. Wait for the "Add-on installed" notification
-6. Choose install from repository
-7. Choose "KodiSeerr Repository" → "Video add-ons" → "KodiSeerr"
-8. Wait for the "Add-on installed" notification
-
-For manual install:
 1. Download the latest `Kodiseerr.zip` release
 2. In Kodi, navigate to **Add-ons**
 3. Click the package icon (top left) → **Install from zip file**
@@ -54,6 +51,9 @@ Additional settings cover requests (4K, quality profiles, season selection), not
 3. For movies, choose regular or 4K (if enabled)
 4. Confirm your request
 
+### Favorites
+Right click any item and select **Add to Favorites** or **Remove from Favorites**. Access your list from the main menu.
+
 ---
 
 ## Notifications
@@ -72,5 +72,5 @@ If you enjoy KodiSeerr and want to donate for a coffee or to kill some braincell
 
 ## Links
 
-- Seerr: https://github.com/seerr-team/seerr
+- Jellyseerr: https://github.com/Fallenbagel/jellyseerr
 - Kodi: https://kodi.tv/
