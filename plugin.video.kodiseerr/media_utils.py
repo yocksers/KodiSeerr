@@ -1,4 +1,5 @@
 import xbmc
+import xbmcgui
 import api_client
 import cache
 
@@ -164,6 +165,26 @@ def get_media_status(media_type, media_id, item=None):
     except Exception as e:
         xbmc.log(f"[KodiSeerr] Status check error: {e}", xbmc.LOGERROR)
     return 1
+
+
+def get_trailer_key(details_data):
+    if not details_data:
+        return None
+    videos = details_data.get('relatedVideos') or []
+    youtube_videos = [v for v in videos if (v.get('site') or '').lower() == 'youtube' and v.get('key')]
+    for wanted_type in ('Trailer', 'Teaser'):
+        for v in youtube_videos:
+            if v.get('type') == wanted_type:
+                return v['key']
+    return youtube_videos[0]['key'] if youtube_videos else None
+
+
+def play_trailer(key):
+    try:
+        xbmc.Player().play(f'plugin://plugin.video.youtube/play/?video_id={key}')
+    except Exception as e:
+        xbmc.log(f"[KodiSeerr] Trailer playback error: {e}", xbmc.LOGERROR)
+        xbmcgui.Dialog().notification('KodiSeerr', 'Unable to play trailer (YouTube add-on required)', xbmcgui.NOTIFICATION_ERROR, 4000)
 
 
 def get_status_label(status):

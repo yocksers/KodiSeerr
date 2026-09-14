@@ -49,6 +49,15 @@ def play_local_file(media_type, media_id, season=None, episode=None):
         xbmcplugin.setResolvedUrl(context.addon_handle, False, xbmcgui.ListItem())
         return
 
+    title = (data.get('title') or data.get('name') or 'this') if data else 'this'
+    if media_type == 'tv' and season is not None and episode is not None:
+        prompt = f'Play {title} S{int(season):02d}E{int(episode):02d}?'
+    else:
+        prompt = f'Play {title}?'
+    if not xbmcgui.Dialog().yesno('KodiSeerr', prompt, yeslabel='Play', nolabel='Cancel'):
+        xbmcplugin.setResolvedUrl(context.addon_handle, False, xbmcgui.ListItem())
+        return
+
     play_item = xbmcgui.ListItem()
     play_item.setPath(path)
     play_item.setProperty('IsPlayable', 'true')

@@ -143,6 +143,28 @@ def do_request(media_type, media_id):
         if not xbmcgui.Dialog().yesno('KodiSeerr', 'This content is already requested. Request again?'):
             return
 
+    skip_confirm = False
+    if context.addon.getSettingBool('enable_trailer_prompt'):
+        details_cache_key = f"details_{media_type}_{media_id}"
+        details_data = cache.get_cached(details_cache_key)
+        if not details_data:
+            details_data = api_client.client.api_request(f"/{media_type}/{media_id}")
+            if details_data:
+                cache.set_cached(details_cache_key, details_data)
+        trailer_key = media_utils.get_trailer_key(details_data)
+        if trailer_key:
+            title = (details_data.get('title') or details_data.get('name') or 'this title') if details_data else 'this title'
+            choice = xbmcgui.Dialog().yesnocustom(
+                'KodiSeerr', f'Request {title}?', 'Watch Trailer', nolabel='Cancel', yeslabel='Request'
+            )
+            if choice == 2:
+                # Playback only starts once this plugin call returns, so end here.
+                media_utils.play_trailer(trailer_key)
+                return
+            if choice != 1:
+                return
+            skip_confirm = True
+
     request_collection = False
     collection_movie_ids = []
     collection_name = None
@@ -239,7 +261,7 @@ def do_request(media_type, media_id):
             if selected >= 0:
                 quality_profile = profiles[selected][0]
 
-    if context.addon.getSettingBool('confirm_before_request'):
+    if context.addon.getSettingBool('confirm_before_request') and not skip_confirm:
         if request_collection:
             msg = f"Request entire collection: {collection_name}" + (" in 4K" if is4k else "") + "?"
         else:
