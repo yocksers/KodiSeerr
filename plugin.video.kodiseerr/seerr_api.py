@@ -11,6 +11,8 @@ class SeerrClient:
         self.api_token = api_token
         self.auth_method = auth_method
         self.logged_in = False
+        import cache
+        self.cache_scope = cache.get_scope()
         self.session = requests.Session()
         self.session.headers.update({"Accept": "application/json"})
         self._init_session()
@@ -32,7 +34,7 @@ class SeerrClient:
     def _load_cookies(self):
         try:
             import cache
-            raw = cache.get_cached("seerr_session_cookies")
+            raw = cache.get_cached("seerr_session_cookies", scope=self.cache_scope)
             if raw:
                 cookie_dict = json.loads(raw)
                 self.session.cookies.update(requests.utils.cookiejar_from_dict(cookie_dict))
@@ -45,7 +47,7 @@ class SeerrClient:
             import cache
             cache.set_cached("seerr_session_cookies", json.dumps(
                 requests.utils.dict_from_cookiejar(self.session.cookies)
-            ))
+            ), scope=self.cache_scope)
         except Exception:
             pass
 
@@ -100,7 +102,7 @@ class SeerrClient:
                 self.session.headers.pop("X-Api-Key", None)
                 try:
                     import cache
-                    cache.remove("seerr_session_cookies")
+                    cache.remove("seerr_session_cookies", scope=self.cache_scope)
                 except Exception:
                     pass
                 if self.login():
