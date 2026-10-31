@@ -1,15 +1,15 @@
 import requests
 import xbmcaddon
 import xbmc
-import json
 
 class SeerrClient:
-    def __init__(self, base_url, username, password, api_token=None, auth_method="password"):
+    def __init__(self, base_url, username, password, api_token=None, auth_method="password", session_owner=None):
         self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
         self.api_token = api_token
         self.auth_method = auth_method
+        self.session_owner = session_owner
         self.logged_in = False
         self.session = requests.Session()
         self.session.headers.update({"Accept": "application/json"})
@@ -26,26 +26,25 @@ class SeerrClient:
                 pass
         else:
             self.session.verify = True
-        if self.auth_method != "api_token":
+        if self.auth_method != "api_token" and self.session_owner:
             self._load_cookies()
 
     def _load_cookies(self):
         try:
             import cache
-            raw = cache.get_cached("seerr_session_cookies")
-            if raw:
-                cookie_dict = json.loads(raw)
+            cookie_dict = cache.get_session(self.session_owner)
+            if cookie_dict:
                 self.session.cookies.update(requests.utils.cookiejar_from_dict(cookie_dict))
                 self.logged_in = True
         except Exception:
             pass
 
     def _save_cookies(self):
+        if not self.session_owner:
+            return
         try:
             import cache
-            cache.set_cached("seerr_session_cookies", json.dumps(
-                requests.utils.dict_from_cookiejar(self.session.cookies)
-            ))
+            cache.set_session(self.session_owner, requests.utils.dict_from_cookiejar(self.session.cookies))
         except Exception:
             pass
 
@@ -100,7 +99,7 @@ class SeerrClient:
                 self.session.headers.pop("X-Api-Key", None)
                 try:
                     import cache
-                    cache.remove("seerr_session_cookies")
+                    cache.clear_session()
                 except Exception:
                     pass
                 if self.login():
