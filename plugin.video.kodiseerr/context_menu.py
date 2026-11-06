@@ -4,8 +4,11 @@ import context
 import cache
 import api_client
 import requests_view
+import users
+import users_view
 
 context.init(["plugin://plugin.video.kodiseerr/", "-1", "?"])
+users.purge_legacy_password()
 cache.load_cache()
 
 
@@ -31,6 +34,9 @@ def main():
     year = tag.getYear()
     if not title:
         xbmcgui.Dialog().notification('KodiSeerr', 'No title found for this item', xbmcgui.NOTIFICATION_ERROR, 3000)
+        return
+
+    if not users_view.ensure_signed_in():
         return
 
     from urllib.parse import urlencode, quote

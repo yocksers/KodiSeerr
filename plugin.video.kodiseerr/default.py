@@ -9,12 +9,21 @@ import requests_view
 import actions
 import api_client
 import embuary_patch
+import users
+import users_view
 import play_local_file
 
 context.init(sys.argv)
+users.purge_legacy_password()
 cache.load_cache()
 
 mode = context.args.get('mode') or context.args.get('action')
+
+_SIGNED_OUT_MODES = {
+    "select_user", "add_user", "rename_user", "forget_user", "remove_user", "switch_user",
+    "manage_users", "test_connection", "clear_cache", "inject_embuary_patch", "widget_paths",
+}
+_PLAYABLE_MODES = {"play_local_file", "play_next_episode"}
 page = context.args.get('page', 1)
 try:
     page = int(page)
@@ -62,7 +71,29 @@ def _fetch_list(cache_key, endpoint, params):
 
 
 if not mode:
-    browse.list_main_menu()
+    if users.uses_api_token() or users.active_user():
+        browse.list_main_menu()
+    else:
+        users_view.list_users()
+elif mode not in _SIGNED_OUT_MODES and not users_view.ensure_signed_in():
+    if mode in _PLAYABLE_MODES:
+        xbmcplugin.setResolvedUrl(context.addon_handle, False, xbmcgui.ListItem())
+    elif context.addon_handle >= 0:
+        xbmcplugin.endOfDirectory(context.addon_handle, succeeded=False)
+elif mode == "select_user":
+    users_view.select_user(context.args.get('user'))
+elif mode == "add_user":
+    users_view.add_user_action()
+elif mode == "rename_user":
+    users_view.rename_user(context.args.get('user'))
+elif mode == "forget_user":
+    users_view.forget_user(context.args.get('user'))
+elif mode == "remove_user":
+    users_view.remove_user(context.args.get('user'))
+elif mode == "switch_user":
+    users_view.switch_user()
+elif mode == "manage_users":
+    users_view.manage_users()
 elif mode == "test_connection":
     actions.test_connection()
 elif mode == "clear_cache":

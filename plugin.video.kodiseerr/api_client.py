@@ -1,9 +1,7 @@
-import hashlib
-import json
 import xbmcaddon
-import xbmcvfs
 import time
 import cache
+import users
 from seerr_api import SeerrClient
 
 _client_instance = None
@@ -14,34 +12,31 @@ _SETTINGS_CHECK_INTERVAL = 5.0
 def _read_settings():
     addon = xbmcaddon.Addon()
     if addon.getSettingBool("use_api_token"):
-        _auth_method = "api_token"
-    elif addon.getSettingBool("use_local_auth"):
-        _auth_method = "local"
+        identity = ("api_token", addon.getSetting("seerr_api_token"))
     else:
-        _auth_method = "jellyfin"
+        user = users.active_user()
+        identity = (user["auth"], user["login"], user["id"]) if user else ()
     return (
-        xbmcvfs.translatePath("special://profile"),
-        addon.getSetting("seerr_url").rstrip("/"),
-        addon.getSetting("seerr_username"),
-        addon.getSetting("seerr_password"),
-        addon.getSetting("seerr_api_token"),
-        _auth_method,
+        users.owner_for(*identity),
+        users.server_url(),
+        identity,
         addon.getSettingBool("allow_self_signed")
     )
 
-def _owner_of(settings):
-    """Fingerprint of the Kodi profile and Seerr identity that cached data and sessions belong to"""
-    profile, url, username, password, api_token, auth_method, _allow_self_signed = settings
-    credentials = [api_token] if auth_method == "api_token" else [username, password]
-    raw = json.dumps([profile, url, auth_method] + credentials)
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
 def current_owner():
-    return _owner_of(_read_settings())
+    return _read_settings()[0]
+
+def _build_client(owner, url, identity):
+    if not identity:
+        return SeerrClient(url, None, None)
+    if identity[0] == "api_token":
+        return SeerrClient(url, None, None, identity[1], "api_token")
+    auth_method, login, user_id = identity
+    return SeerrClient(url, login, None, auth_method=auth_method, session_store=users.SessionStore(owner, user_id))
 
 def get_client():
     global _client_instance, _cached_settings, _last_settings_check
-    
+
     now = time.time()
     if _client_instance is not None and (now - _last_settings_check) < _SETTINGS_CHECK_INTERVAL:
         return _client_instance
@@ -51,14 +46,21 @@ def get_client():
     if _client_instance is None or _cached_settings != current_settings:
         if _client_instance is not None:
             _client_instance.close()
-        _profile, url, username, password, api_token, auth_method, _allow_self_signed = current_settings
-        owner = _owner_of(current_settings)
+        owner, url, identity, _allow_self_signed = current_settings
         cache.bind(owner)
-        _client_instance = SeerrClient(url, username, password, api_token, auth_method, session_owner=owner)
+        _client_instance = _build_client(owner, url, identity)
         _cached_settings = current_settings
 
     _last_settings_check = now
     return _client_instance
+
+def reset():
+    global _client_instance, _cached_settings
+    if _client_instance is not None:
+        _client_instance.close()
+    _client_instance = None
+    _cached_settings = None
+    cache.bind(current_owner())
 
 class _ClientProxy:
     """Proxy object that always returns the current client"""

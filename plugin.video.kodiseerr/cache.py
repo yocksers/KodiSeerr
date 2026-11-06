@@ -7,8 +7,6 @@ import xbmcgui
 _CACHE_PROPERTY = "kodiseerr_c83c803f_cache"
 _SESSION_PROPERTY = "kodiseerr_c83c803f_session"
 _cache = {}
-# Fingerprint of the Kodi profile + Seerr identity the cache belongs to. The Home
-# window is shared by all profiles, so data written under another owner is ignored.
 _owner = None
 
 
@@ -80,7 +78,6 @@ def clear():
     _cache = {}
     window = xbmcgui.Window(10000)
     window.setProperty(_CACHE_PROPERTY, "")
-    clear_session()
 
 
 def get_session(owner):

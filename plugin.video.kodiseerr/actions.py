@@ -8,14 +8,21 @@ import context
 import library_utils
 import media_utils
 import storage
+import users
 from utils import build_url
 
 
 def test_connection():
     try:
-        api_client.client.logged_in = False
-        if api_client.client.login():
-            xbmcgui.Dialog().notification('KodiSeerr', 'Connection successful!', xbmcgui.NOTIFICATION_INFO, 3000)
+        if users.uses_api_token() or users.active_user():
+            profile = api_client.client.api_request('/auth/me')
+            if profile:
+                name = profile.get('displayName') or profile.get('email') or 'Seerr'
+                xbmcgui.Dialog().notification('KodiSeerr', f'Connection successful! Signed in as {name}', xbmcgui.NOTIFICATION_INFO, 3000)
+            else:
+                xbmcgui.Dialog().notification('KodiSeerr', 'Connection failed. Check settings.', xbmcgui.NOTIFICATION_ERROR, 5000)
+        elif api_client.client.server_status():
+            xbmcgui.Dialog().notification('KodiSeerr', 'Server reachable. No user signed in.', xbmcgui.NOTIFICATION_INFO, 3000)
         else:
             xbmcgui.Dialog().notification('KodiSeerr', 'Connection failed. Check settings.', xbmcgui.NOTIFICATION_ERROR, 5000)
     except Exception as e:

@@ -5,6 +5,7 @@ import xbmcvfs
 import json
 import os
 from datetime import datetime
+import users
 
 addon = xbmcaddon.Addon()
 
@@ -14,7 +15,6 @@ def export_settings():
         # Get all settings
         settings = {
             'seerr_url': addon.getSetting('seerr_url'),
-            'seerr_username': addon.getSetting('seerr_username'),
             'use_api_token': addon.getSettingBool('use_api_token'),
             'seerr_api_token': addon.getSetting('seerr_api_token'),
             'allow_self_signed': addon.getSettingBool('allow_self_signed'),
@@ -37,6 +37,7 @@ def export_settings():
             'cache_duration': addon.getSettingInt('cache_duration'),
             'cache_images': addon.getSettingBool('cache_images'),
             'debug_logging': addon.getSettingBool('debug_logging'),
+            'users': users.public_users(),
             'export_date': datetime.now().isoformat()
         }
         
@@ -73,7 +74,10 @@ def import_settings():
         
         # Apply settings (skip password for security)
         for key, value in settings.items():
-            if key in ['export_date', 'seerr_password']:
+            if key in ['export_date', 'seerr_password', 'seerr_username', 'use_local_auth']:
+                continue
+            if key == 'users':
+                users.merge_users(value)
                 continue
             try:
                 if isinstance(value, bool):

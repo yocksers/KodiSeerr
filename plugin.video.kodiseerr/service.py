@@ -1,9 +1,9 @@
 import xbmc
 import xbmcaddon
 import xbmcgui
-import xbmcvfs
 import json
 import api_client
+import users
 import os
 
 addon = xbmcaddon.Addon()
@@ -27,36 +27,40 @@ def _get_poster(media):
     return xbmcgui.NOTIFICATION_INFO
 
 
-def main_loop():
-    data_path = xbmcvfs.translatePath(f"special://profile/addon_data/{addon.getAddonInfo('id')}/")
-    os.makedirs(data_path, exist_ok=True)
-    notified_file = os.path.join(data_path, "notified_requests.json")
+def _load_notified(notified_file):
     try:
         if os.path.exists(notified_file):
             with open(notified_file, 'r') as f:
                 raw = json.load(f)
                 if isinstance(raw, list):
-                    notified_media = {str(i): {'status': 5} for i in raw}
-                    notified_declined = []
+                    return {str(i): {'status': 5} for i in raw}, [], False
                 elif isinstance(raw, dict) and 'media' in raw:
-                    notified_media = raw.get('media', {})
-                    notified_declined = raw.get('declined', [])
+                    return raw.get('media', {}), raw.get('declined', []), False
                 else:
-                    notified_media = raw
-                    notified_declined = []
-        else:
-            notified_media = {}
-            notified_declined = []
+                    return raw, [], False
+        return {}, [], True
     except Exception:
         import traceback
         traceback.print_exc()
-        notified_media = {}
-        notified_declined = []
+        return {}, [], False
+
+
+def main_loop():
+    users.purge_legacy_password()
+    notified_file = None
+    notified_media = {}
+    notified_declined = []
+    silent = False
 
     interval = get_interval()
 
     while not monitor.abortRequested():
-        if addon.getSettingBool('enable_request_notifications'):
+        signed_in = users.uses_api_token() or users.active_user()
+        if signed_in and addon.getSettingBool('enable_request_notifications'):
+            current_file = users.data_path("notified_requests.json")
+            if current_file != notified_file:
+                notified_file = current_file
+                notified_media, notified_declined, silent = _load_notified(notified_file)
             try:
                 requests_data = api_client.client.api_request('/request')
             except Exception:
@@ -75,6 +79,13 @@ def main_loop():
                     media_id = str(media.get('tmdbId') or media.get('id') or "")
                     request_id = str(item.get('id') or "")
                     poster = _get_poster(media)
+
+                    if silent:
+                        if request_status == 3 and request_id and request_id not in notified_declined:
+                            notified_declined.append(request_id)
+                        if media_id:
+                            notified_media[media_id] = {'status': media_status, 'title': title}
+                        continue
 
                     if request_status == 3 and request_id and request_id not in notified_declined:
                         if addon.getSettingBool('notify_declined'):
@@ -97,6 +108,8 @@ def main_loop():
                         elif media_status != previous_status and media_id not in notified_media:
                             notified_media[media_id] = {'status': media_status, 'title': title}
 
+                silent = False
+                os.makedirs(os.path.dirname(notified_file), exist_ok=True)
                 with open(notified_file, 'w') as f:
                     json.dump({'media': notified_media, 'declined': notified_declined}, f)
 

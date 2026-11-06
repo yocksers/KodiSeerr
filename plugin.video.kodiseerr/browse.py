@@ -9,6 +9,7 @@ import context
 import library_utils
 import media_utils
 import storage
+import users
 from utils import build_url, add_next_page_button
 
 _NETWORKS = [
@@ -66,7 +67,13 @@ def list_main_menu():
         else:
             url = build_url({'mode': mode})
         xbmcplugin.addDirectoryItem(context.addon_handle, url, list_item, is_folder)
-    xbmcplugin.endOfDirectory(context.addon_handle)
+    active = None if users.uses_api_token() else users.active_user()
+    if active:
+        avatar = active.get('avatar') or 'DefaultUser.png'
+        switch_item = xbmcgui.ListItem(f"Switch User ({active['name']})")
+        switch_item.setArt({'icon': avatar, 'thumb': avatar})
+        xbmcplugin.addDirectoryItem(context.addon_handle, build_url({'mode': 'switch_user'}), switch_item, False)
+    xbmcplugin.endOfDirectory(context.addon_handle, cacheToDisc=False)
 
 
 def list_top_rated(media_type):

@@ -3,13 +3,13 @@ import xbmcaddon
 import xbmc
 
 class SeerrClient:
-    def __init__(self, base_url, username, password, api_token=None, auth_method="password", session_owner=None):
+    def __init__(self, base_url, username, password, api_token=None, auth_method="password", session_store=None):
         self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
         self.api_token = api_token
         self.auth_method = auth_method
-        self.session_owner = session_owner
+        self.session_store = session_store
         self.logged_in = False
         self.session = requests.Session()
         self.session.headers.update({"Accept": "application/json"})
@@ -26,25 +26,15 @@ class SeerrClient:
                 pass
         else:
             self.session.verify = True
-        if self.auth_method != "api_token" and self.session_owner:
+        if self.auth_method != "api_token" and self.session_store:
             self._load_cookies()
 
     def _load_cookies(self):
         try:
-            import cache
-            cookie_dict = cache.get_session(self.session_owner)
+            cookie_dict = self.session_store.load()
             if cookie_dict:
                 self.session.cookies.update(requests.utils.cookiejar_from_dict(cookie_dict))
                 self.logged_in = True
-        except Exception:
-            pass
-
-    def _save_cookies(self):
-        if not self.session_owner:
-            return
-        try:
-            import cache
-            cache.set_session(self.session_owner, requests.utils.dict_from_cookiejar(self.session.cookies))
         except Exception:
             pass
 
@@ -63,6 +53,10 @@ class SeerrClient:
             self.logged_in = True
             return True
 
+        if not self.username or not self.password:
+            xbmc.log(f"[kodiseerr] No signed-in user", xbmc.LOGDEBUG)
+            return False
+
         if self.auth_method == "local":
             login_url = f"{self.base_url}/api/v1/auth/local"
             payload = {"email": self.username, "password": self.password}
@@ -74,7 +68,6 @@ class SeerrClient:
             resp.raise_for_status()
             xbmc.log(f"[kodiseerr] Login successful", xbmc.LOGDEBUG)
             self.logged_in = True
-            self._save_cookies()
             return True
         except requests.HTTPError as e:
             xbmc.log(f"[kodiseerr] Login failed: {e.response.status_code} {e.response.reason}", xbmc.LOGERROR)
@@ -97,11 +90,11 @@ class SeerrClient:
                 self.logged_in = False
                 self.session.cookies.clear()
                 self.session.headers.pop("X-Api-Key", None)
-                try:
-                    import cache
-                    cache.clear_session()
-                except Exception:
-                    pass
+                if self.session_store:
+                    try:
+                        self.session_store.expire()
+                    except Exception:
+                        pass
                 if self.login():
                     resp = self.session.request(method, url, json=data, params=params, timeout=15)
                 else:
@@ -118,4 +111,23 @@ class SeerrClient:
             return None
         except requests.RequestException as e:
             xbmc.log(f"[kodiseerr] API request failed: {method} {endpoint} -> {e}", xbmc.LOGERROR)
+            return None
+
+    def logout(self):
+        if not self.logged_in:
+            return
+        try:
+            self.session.post(f"{self.base_url}/api/v1/auth/logout", timeout=15)
+        except requests.RequestException as e:
+            xbmc.log(f"[kodiseerr] Logout failed: {e}", xbmc.LOGDEBUG)
+        self.logged_in = False
+        self.session.cookies.clear()
+
+    def server_status(self):
+        try:
+            resp = self.session.get(f"{self.base_url}/api/v1/status", timeout=15)
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.RequestException, ValueError) as e:
+            xbmc.log(f"[kodiseerr] Server status check failed: {e}", xbmc.LOGERROR)
             return None

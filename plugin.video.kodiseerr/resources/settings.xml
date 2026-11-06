@@ -4,12 +4,11 @@
         <setting id="allow_self_signed" type="bool" label="Allow self-signed certificates" default="false" />
         <setting type="sep" />
         <setting id="use_api_token" type="bool" label="Use API Token Authentication" default="false" />
-        <setting id="use_local_auth" type="bool" label="Use Local Account (email/password)" default="false" />
-        <setting type="sep" />
-        <setting id="seerr_api_token" type="text" label="API Token" default="" />
-        <setting type="sep" />
-        <setting id="seerr_username" type="text" label="Username / Email" default="" />
-        <setting id="seerr_password" type="text" option="hidden" label="Password" default="" />
+        <setting id="seerr_api_token" type="text" label="API Token" default="" visible="eq(-1,true)" />
+        <setting id="manage_users" type="action" label="Manage Users" action="RunPlugin(plugin://plugin.video.kodiseerr/?mode=manage_users)" visible="eq(-2,false)" />
+        <setting id="use_local_auth" type="bool" label="Use Local Account (email/password)" default="false" visible="false" />
+        <setting id="seerr_username" type="text" label="Username / Email" default="" visible="false" />
+        <setting id="seerr_password" type="text" option="hidden" label="Password" default="" visible="false" />
     </category>
     <category label="Requests">
         <setting id="enable_ask_4k" type="bool" label="Enable asking for 4K" default="true" />
